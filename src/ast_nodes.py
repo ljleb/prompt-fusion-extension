@@ -2,13 +2,8 @@ class ListExpression:
     def __init__(self, expressions):
         self.expressions = expressions
 
-    def evaluate(self, steps_range, context = dict()):
-        result = ''
-        for i in range(len(self.expressions)):
-            expression = self.expressions[i]
-            if i != 0: result += ' '
-            result += expression.evaluate(steps_range, context)
-        return result
+    def evaluate(self, steps_range, context=dict()):
+        return ' '.join([expression.evaluate(steps_range, context) for expression in self.expressions])
 
 class DeclarationExpression:
     def __init__(self, symbol, nested, expression):
@@ -16,7 +11,7 @@ class DeclarationExpression:
         self.nested = nested
         self.expression = expression
 
-    def evaluate(self, steps_range, context = dict()):
+    def evaluate(self, steps_range, context=dict()):
         updated_context = dict(context)
         updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
         return self.expression.evaluate(steps_range, updated_context)
@@ -27,7 +22,7 @@ class RangeExpression:
         self.begin = begin
         self.end = end
 
-    def evaluate(self, steps_range, context = dict()):
+    def evaluate(self, steps_range, context=dict()):
         new_steps_range = (
             max(self.begin, steps_range[0]) if self.begin else steps_range[0],
             min(self.end, steps_range[1]) if self.end else steps_range[1]
@@ -48,7 +43,7 @@ class WeightedExpression:
         self.nested = nested
         self.weight = weight
 
-    def evaluate(self, steps_range, context = dict()):
+    def evaluate(self, steps_range, context=dict()):
         return f'({self.nested.evaluate(steps_range, context)}:{self.weight})'
 
 class WeightInterpolationExpression:
@@ -57,7 +52,7 @@ class WeightInterpolationExpression:
         self.weight_begin = weight_begin
         self.weight_end = weight_end
 
-    def evaluate(self, steps_range, context = dict()):
+    def evaluate(self, steps_range, context=dict()):
         total_steps = steps_range[1] - steps_range[0]
         result = ''
         for i in range(total_steps):
@@ -82,12 +77,12 @@ class SubstitutionExpression:
     def __init__(self, symbol):
         self.symbol = symbol
 
-    def evaluate(self, steps_range, context = dict()):
+    def evaluate(self, steps_range, context=dict()):
         return context[self.symbol]
 
 class TextExpression:
     def __init__(self, text):
         self.text = text
 
-    def evaluate(self, steps_range, context = dict()):
+    def evaluate(self, steps_range, context=dict()):
         return self.text

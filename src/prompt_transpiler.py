@@ -1,4 +1,4 @@
-from ast_nodes import (
+from extensions.promptlang.src.ast_nodes import (
     ListExpression,
     DeclarationExpression,
     WeightedExpression,
@@ -167,3 +167,14 @@ parse_symbol = make_token_parser(
     'abcdefghijklmnopqrstuvwxyz' +
     'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
     '_')
+
+if __name__ == "__main__":
+    print(transpile_prompt("""(extremely cute, beautiful and delicate (1girl, solo)[0,7] (loli girl)[7,30]):1.2
+caustics,
+
+(frosty colors with frost):0.8
+(flashy sparkling red tunic with white stripes):0.7
+(extremely intricate spiky tattoos):1.2
+(very bright glowing yellow eyes):1.1
+
+(wearing a japanese hanbok):1.1""", 30))
