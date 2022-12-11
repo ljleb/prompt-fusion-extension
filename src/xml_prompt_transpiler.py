@@ -25,7 +25,7 @@ def xml_to_ast(node, steps):
             weight = float(child.get('value') or '1')
             res.append(ast.WeightedExpression(xml_to_ast(child, steps), weight))
 
-        if child.tag == 'weight_interpolation':
+        if child.tag == 'weight-interpolation':
             start = float(child.get('start') or '1')
             end = float(child.get('end') or '1')
             res.append(ast.WeightInterpolationExpression(xml_to_ast(child, steps), start, end))
