@@ -79,6 +79,14 @@ class WeightInterpolationExpression:
         return result
 
 
+class AlternatorExpression:
+    def __init__(self, expressions):
+        self.expressions = expressions
+
+    def evaluate(self, steps_range, context=dict()):
+        return '[' + '|'.join([expression.evaluate(steps_range, context) for expression in self.expressions]) + ']'
+
+
 class SubstitutionExpression:
     def __init__(self, symbol):
         self.symbol = symbol
