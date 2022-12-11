@@ -4,8 +4,6 @@ import extensions.promptlang.src.ast_nodes as ast
 
 def transpile_prompt(prompt, steps):
     root = xml_parser.fromstring("<prompt>\n" + prompt + "\n</prompt>")
-    if root.tag != "prompt":
-        raise NotImplementedError
     expression = xml_to_ast(root, steps)
     return expression.evaluate((0, steps))
 
