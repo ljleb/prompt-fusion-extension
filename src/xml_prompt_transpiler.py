@@ -1,9 +1,9 @@
-import xml.etree.ElementTree as xml_parser
+import xml.etree.ElementTree as XmlParser
 import extensions.promptlang.src.ast_nodes as ast
 
 
 def transpile_prompt(prompt, steps):
-    root = xml_parser.fromstring('<prompt>\n' + prompt + '\n</prompt>')
+    root = XmlParser.fromstring('<prompt>\n' + prompt + '\n</prompt>')
     expression = xml_to_ast(root, steps)
     return expression.evaluate((0, steps))
 
@@ -11,9 +11,12 @@ def transpile_prompt(prompt, steps):
 def xml_to_ast(node, steps):
     res = []
 
-    text = (node.text or '').strip()
-    if text != '':
-        res.append(ast.TextExpression(text))
+    def append_text(node_text):
+        refined_text = (node_text or '').strip()
+        if refined_text != '':
+            res.append(ast.TextExpression(refined_text))
+
+    append_text(node.text)
 
     for child in node:
         if child.tag == 'range':
@@ -30,8 +33,7 @@ def xml_to_ast(node, steps):
             end = float(child.get('end') or '1')
             res.append(ast.WeightInterpolationExpression(xml_to_ast(child, steps), start, end))
 
-        text = (child.tail or '').strip()
-        if text != '':
-            res.append(ast.TextExpression(text))
+        append_text(child.tail)
+
         xml_to_ast(child, steps)
     return ast.ListExpression(res)
