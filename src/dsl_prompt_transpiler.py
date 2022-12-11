@@ -175,7 +175,7 @@ def parse_substitution_expression(prompt):
 
 parse_substitution_begin = make_strict_token_parser('$')
 
-parse_text = make_token_parser(' \n\r\t:[]()|', lambda s, cs: s not in cs)
+parse_text = make_token_parser(' \n\r\t:[]()|=', lambda s, cs: s not in cs)
 
 parse_symbol = make_token_parser(
     'abcdefghijklmnopqrstuvwxyz' +
