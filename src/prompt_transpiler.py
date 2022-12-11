@@ -1,6 +1,6 @@
 import re
-from extensions.promptlang.src.dsl_prompt_transpiler import transpile_prompt as transpile_dsl
-from extensions.promptlang.src.xml_prompt_transpiler import transpile_prompt as transpile_xml
+from dsl_prompt_transpiler import transpile_prompt as transpile_dsl
+from xml_prompt_transpiler import transpile_prompt as transpile_xml
 
 header_re = re.compile("\(promptlang\)\[,0]")
 header_xml_re = re.compile("<!--promptlang-->")

@@ -1,4 +1,4 @@
-import extensions.promptlang.src.ast_nodes as ast
+import ast_nodes as ast
 
 
 def make_strict_token_parser(characters):

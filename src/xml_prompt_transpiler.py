@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as XmlParser
-import extensions.promptlang.src.ast_nodes as ast
+import ast_nodes as ast
 
 
 def transpile_prompt(prompt, steps):
