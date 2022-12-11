@@ -26,8 +26,8 @@ class RangeExpression:
 
     def evaluate(self, steps_range, context=dict()):
         new_steps_range = (
-            max(self.begin, steps_range[0]) if self.begin else steps_range[0],
-            min(self.end, steps_range[1]) if self.end else steps_range[1]
+            max(self.begin, steps_range[0]) if self.begin is not None else steps_range[0],
+            min(self.end, steps_range[1]) if self.end is not None else steps_range[1]
         )
         if new_steps_range[0] >= new_steps_range[1]:
             return ''
@@ -54,8 +54,8 @@ class WeightedExpression:
 class WeightInterpolationExpression:
     def __init__(self, nested, weight_begin, weight_end):
         self.nested = nested
-        self.weight_begin = weight_begin
-        self.weight_end = weight_end
+        self.weight_begin = weight_begin if weight_begin is not None else 1
+        self.weight_end = weight_end if weight_end is not None else 1
 
     def evaluate(self, steps_range, context=dict()):
         total_steps = steps_range[1] - steps_range[0]
