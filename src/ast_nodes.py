@@ -4,6 +4,7 @@ class ListExpression:
 
     def evaluate(self, steps_range, context=dict()):
         return ' '.join([expression.evaluate(steps_range, context) for expression in self.expressions])
+    
 
 class DeclarationExpression:
     def __init__(self, symbol, nested, expression):
@@ -16,6 +17,7 @@ class DeclarationExpression:
         updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
         return self.expression.evaluate(steps_range, updated_context)
 
+
 class RangeExpression:
     def __init__(self, nested, begin, end):
         self.nested = nested
@@ -27,7 +29,8 @@ class RangeExpression:
             max(self.begin, steps_range[0]) if self.begin else steps_range[0],
             min(self.end, steps_range[1]) if self.end else steps_range[1]
         )
-        if new_steps_range[0] >= new_steps_range[1]: return ''
+        if new_steps_range[0] >= new_steps_range[1]:
+            return ''
 
         result = self.nested.evaluate(new_steps_range, context)
         if self.begin and self.begin > steps_range[0]:
@@ -38,6 +41,7 @@ class RangeExpression:
 
         return result
 
+
 class WeightedExpression:
     def __init__(self, nested, weight):
         self.nested = nested
@@ -45,6 +49,7 @@ class WeightedExpression:
 
     def evaluate(self, steps_range, context=dict()):
         return f'({self.nested.evaluate(steps_range, context)}:{self.weight})'
+
 
 class WeightInterpolationExpression:
     def __init__(self, nested, weight_begin, weight_end):
@@ -73,6 +78,15 @@ class WeightInterpolationExpression:
 
         return result
 
+
+class AlternatorExpression:
+    def __init__(self, expressions):
+        self.expressions = expressions
+
+    def evaluate(self, steps_range, context=dict()):
+        return '[' + '|'.join([expression.evaluate(steps_range, context) for expression in self.expressions]) + ']'
+
+
 class SubstitutionExpression:
     def __init__(self, symbol):
         self.symbol = symbol
@@ -80,9 +94,11 @@ class SubstitutionExpression:
     def evaluate(self, steps_range, context=dict()):
         return context[self.symbol]
 
+
 class TextExpression:
     def __init__(self, text):
         self.text = text
 
     def evaluate(self, steps_range, context=dict()):
         return self.text
+
