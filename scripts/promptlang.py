@@ -51,6 +51,7 @@ class PromptlangScript(scripts.Script):
             unwanted_grid_because_of_img_count = len(processed.images) < 2 and opts.grid_only_if_multiple
             if i == len(processed.images) - 1 and (opts.return_grid or opts.grid_save) and not p.do_not_save_grid and not unwanted_grid_because_of_img_count and opts.return_grid and opts.enable_pnginfo:
                 text = infotext(0, 0)
+                processed.info = text
             else:
                 text = infotext(i // batch_count, i % batch_count)
 
