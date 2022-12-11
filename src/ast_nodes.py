@@ -4,7 +4,7 @@ class ListExpression:
 
     def evaluate(self, steps_range, context=dict()):
         return ' '.join([expression.evaluate(steps_range, context) for expression in self.expressions])
-    
+
 
 class DeclarationExpression:
     def __init__(self, symbol, nested, expression):
