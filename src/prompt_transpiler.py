@@ -1,12 +1,4 @@
-from ast_nodes import (
-    ListExpression,
-    DeclarationExpression,
-    WeightedExpression,
-    RangeExpression,
-    TextExpression,
-    SubstitutionExpression,
-    WeightInterpolationExpression,
-)
+import ast_nodes as ast
 
 
 def make_strict_token_parser(characters):
@@ -44,14 +36,36 @@ def transpile_prompt(prompt, steps):
 
 
 def parse_expression(prompt):
+    return parse_alternator_expression(prompt)
+
+
+def parse_alternator_expression(prompt):
     expressions = []
-    while True:
-        try:
+    head_expression, prompt = parse_list_expression(prompt)
+    expressions.append(head_expression)
+    try:
+        while True:
+            _, prompt = parse_alternator_separator(prompt)
+            expression, prompt = parse_list_expression(prompt)
+            expressions.append(expression)
+    except ValueError:
+        if len(expressions) > 1:
+            return ast.AlternatorExpression(expressions), prompt
+        else:
+            return expressions[0], prompt
+
+
+parse_alternator_separator = make_strict_token_parser('|')
+
+
+def parse_list_expression(prompt):
+    expressions = []
+    try:
+        while True:
             expression, prompt = parse_recursive_expression(prompt)
             expressions.append(expression)
-        except ValueError:
-            break
-    return ListExpression(expressions), prompt
+    except ValueError:
+        return ast.ListExpression(expressions), prompt
 
 
 def parse_recursive_expression(prompt):
@@ -75,7 +89,7 @@ def parse_declaration(prompt):
     _, prompt = parse_assignment_separator(prompt)
     value, prompt = parse_atom_expression(prompt)
     expression, prompt = parse_expression(prompt)
-    return DeclarationExpression(symbol, value, expression), prompt
+    return ast.DeclarationExpression(symbol, value, expression), prompt
 
 
 parse_assignment_separator = make_strict_token_parser('=')
@@ -83,7 +97,7 @@ parse_assignment_separator = make_strict_token_parser('=')
 
 def parse_range_expression(expression, prompt):
     (range_begin, range_end), prompt = parse_range(prompt, int)
-    return RangeExpression(expression, range_begin, range_end), prompt
+    return ast.RangeExpression(expression, range_begin, range_end), prompt
 
 
 def parse_number(prompt, number_type):
@@ -98,11 +112,11 @@ def parse_weighted_expression(expression, prompt):
     _, prompt = parse_weight_separator(prompt)
     try:
         weight, prompt = parse_number(prompt, float)
-        return WeightedExpression(expression, weight), prompt
+        return ast.WeightedExpression(expression, weight), prompt
     except ValueError:
         pass
     (weight_begin, weight_end), prompt = parse_range(prompt, float)
-    return WeightInterpolationExpression(expression, weight_begin, weight_end), prompt
+    return ast.WeightInterpolationExpression(expression, weight_begin, weight_end), prompt
 
 
 parse_weight_separator = make_strict_token_parser(':')
@@ -139,7 +153,7 @@ def parse_atom_expression(prompt):
         return parse_substitution_expression(prompt)
     except ValueError:
         text, prompt = parse_text(prompt)
-        return TextExpression(text), prompt
+        return ast.TextExpression(text), prompt
 
 
 def parse_parentheses_expression(prompt):
@@ -156,12 +170,12 @@ parse_parenthesis_end = make_strict_token_parser(')')
 def parse_substitution_expression(prompt):
     _, prompt = parse_substitution_begin(prompt)
     symbol, prompt = parse_symbol(prompt)
-    return SubstitutionExpression(symbol), prompt
+    return ast.SubstitutionExpression(symbol), prompt
 
 
 parse_substitution_begin = make_strict_token_parser('$')
 
-parse_text = make_token_parser(' \n\r\t:[]()', lambda s, cs: s not in cs)
+parse_text = make_token_parser(' \n\r\t:[]()|', lambda s, cs: s not in cs)
 
 parse_symbol = make_token_parser(
     'abcdefghijklmnopqrstuvwxyz' +
