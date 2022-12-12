@@ -17,11 +17,12 @@ class PromptlangScript(scripts.Script):
     def show(self, is_img2img):
         return scripts.AlwaysVisible
 
-    def process_batch(self, p, prompts, **kwargs):
-        for i, prompt in enumerate(prompts):
-            transpiled_prompt = transpile(prompt, p.steps)
-            self.prompts[transpiled_prompt] = prompt
-            prompts[i] = transpiled_prompt
+    def process(self, p, *args):
+        for prompts in [p.all_prompts, p.all_negative_prompts]:
+            for i, prompt in enumerate(prompts):
+                transpiled_prompt = transpile(prompt, p.steps)
+                self.prompts[transpiled_prompt] = prompt
+                prompts[i] = transpiled_prompt
 
     def postprocess_batch(self, p, **kwargs):
         for prompts in [p.all_prompts, p.all_negative_prompts]:
