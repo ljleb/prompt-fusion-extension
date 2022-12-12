@@ -1,4 +1,5 @@
 import lib.ast_nodes as ast
+from lark import lark
 
 
 def make_strict_token_parser(characters):
@@ -101,8 +102,12 @@ def parse_range_expression(expression, prompt):
 
 
 def parse_number(prompt, number_type):
-    number, prompt = parse_digits(prompt)
-    return number_type(number), prompt
+    try:
+        number, prompt = parse_digits(prompt)
+        return ast.ConversionExpression(number, number_type), prompt
+    except ValueError: pass
+    symbol, prompt = parse_substitution_expression(prompt)
+    return ast.ConversionExpression(symbol, number_type), prompt
 
 
 parse_digits = make_token_parser('0123456789.')
