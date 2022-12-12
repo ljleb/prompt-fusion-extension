@@ -6,19 +6,16 @@
 
 ## Introduction
 
+
 ## Features
+- Interpolated weights
+- 
 
 ## Installation
-
 1. Visit the **Extensions** tab of Automatic's WebUI.
-2. Visit the **Available** subtab.
-3. Uncheck the "ads" filter and press the **Load from** button.
-4. Scroll down to **Unprompted** and press the **Install** button.
+2. Visit the **Install from URL** subtab.
+3. Copy and paste this repository's URL in the **URL for extension's git repository** textbox.
+4. Press the **Install** button. 
+
 
 ## Usage
-
-## Next Steps
-
-## Premium Templates
-
-## Acknowledgements
