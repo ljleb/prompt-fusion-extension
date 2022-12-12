@@ -85,7 +85,7 @@ def parse_recursive_expression(prompt):
 
 
 def parse_declaration(prompt):
-    symbol, prompt = parse_symbol(prompt)
+    symbol, prompt = parse_substitution_expression(prompt)
     _, prompt = parse_assignment_separator(prompt)
     value, prompt = parse_atom_expression(prompt)
     expression, prompt = parse_expression(prompt)
