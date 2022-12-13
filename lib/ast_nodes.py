@@ -1,4 +1,4 @@
-`class ListExpression:
+class ListExpression:
     def __init__(self, expressions):
         self.expressions = expressions
 
@@ -25,18 +25,17 @@ class RangeExpression:
         self.end = end
 
     def evaluate(self, steps_range, context=dict()):
-        new_steps_range = (
-            max(self.begin, steps_range[0]) if self.begin is not None else steps_range[0],
-            min(self.end, steps_range[1]) if self.end is not None else steps_range[1]
-        )
+        begin = self.begin.evaluate(steps_range, context) if self.begin is not None else steps_range[0]
+        end = self.end.evaluate(steps_range, context) if self.end is not None else steps_range[1]
+        new_steps_range = (max(begin, steps_range[0]), min(end, steps_range[1]))
         if new_steps_range[0] >= new_steps_range[1]:
             return ''
 
         result = self.nested.evaluate(new_steps_range, context)
-        if self.begin and self.begin > steps_range[0]:
+        if begin > steps_range[0]:
             result = f'[{result}:{new_steps_range[0] - 1}]'
 
-        if self.end and self.end < steps_range[1]:
+        if end < steps_range[1]:
             result = f'[{result}::{new_steps_range[1] - 1}]'
 
         return result

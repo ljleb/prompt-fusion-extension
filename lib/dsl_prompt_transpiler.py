@@ -1,5 +1,4 @@
 import lib.ast_nodes as ast
-from lark import lark
 
 
 def make_strict_token_parser(characters):
@@ -86,11 +85,11 @@ def parse_recursive_expression(prompt):
 
 
 def parse_declaration(prompt):
-    symbol, prompt = parse_substitution_expression(prompt)
+    sub_expr, prompt = parse_substitution_expression(prompt)
     _, prompt = parse_assignment_separator(prompt)
     value, prompt = parse_atom_expression(prompt)
     expression, prompt = parse_expression(prompt)
-    return ast.DeclarationExpression(symbol, value, expression), prompt
+    return ast.DeclarationExpression(sub_expr.symbol, value, expression), prompt
 
 
 parse_assignment_separator = make_strict_token_parser('=')
@@ -104,7 +103,7 @@ def parse_range_expression(expression, prompt):
 def parse_number(prompt, number_type):
     try:
         number, prompt = parse_digits(prompt)
-        return ast.ConversionExpression(number, number_type), prompt
+        return ast.TextExpression(number_type(number)), prompt
     except ValueError: pass
     symbol, prompt = parse_substitution_expression(prompt)
     return ast.ConversionExpression(symbol, number_type), prompt
