@@ -1,4 +1,4 @@
-from bezier import compute_on_curve_with_points as compute_bezier
+from lib.bezier import compute_on_curve_with_points as compute_bezier
 import numpy
 import math
 
