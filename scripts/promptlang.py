@@ -7,7 +7,7 @@ base_dir = scripts.basedir()
 sys.path.append(base_dir)
 
 from lib.prompt_transpiler import transpile_prompt as transpile
-from lib.bezier import compute_on_curve_with_points as compute_bezier
+from lib.catmull import compute_catmull
 
 
 saved_get_learned_conditioning = prompt_parser.get_learned_conditioning

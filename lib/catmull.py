@@ -5,7 +5,7 @@ import math
 def linear_interpolation(t, control_points):
     return control_points[0] + (control_points[1] - control_points[0]) * t
 
-def compute_catmul(t, control_points):
+def compute_catmull(t, control_points):
     if len(control_points) == 1:
         return control_points[0]
     elif len(control_points) == 2:
@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
     for i in range(size):
         t = i/size
-        point = compute_catmul(t, points)
+        point = compute_catmull(t, points)
         turtle_tool.goto(point[:-1])
         turtle_tool.dot()
         print(point)
