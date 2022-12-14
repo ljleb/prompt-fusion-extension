@@ -29,7 +29,7 @@ def hijacked_get_learned_conditioning(model, prompts, steps):
         cond_array = []
         if steps > 1:
             for i in range(steps):
-                cond_array.append(prompt_parser.ScheduledPromptConditioning(end_at_step=i, cond=compute_bezier(i/(steps-1), control_points)))
+                cond_array.append(prompt_parser.ScheduledPromptConditioning(end_at_step=i, cond=compute_catmul(i/(steps-1), control_points)))
         else:
             cond_array.append(prompt_parser.ScheduledPromptConditioning(end_at_step=steps, cond=compute_bezier(0.5, control_points)))
         res.append(cond_array)
