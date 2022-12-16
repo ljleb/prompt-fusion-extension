@@ -31,7 +31,7 @@ if __name__ == '__main__':
         turtle_tool.dot(5, "red")
 
     for i in range(size):
-        t = i/size
+        t = apply_sampled_range(i/size, [0, 5, 12, 30])
         point = compute_catmull(t, points)
         turtle_tool.goto(point)
         turtle_tool.dot()

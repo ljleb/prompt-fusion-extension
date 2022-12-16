@@ -10,6 +10,7 @@ from lib.prompt_transpiler import transpile_prompt as transpile
 from lib.catmull import compute_catmull
 from lib.bezier import compute_on_curve_with_points as compute_bezier
 from lib.linear import compute_linear
+from lib.t_scaler import apply_sampled_range
 
 
 saved_get_learned_conditioning = prompt_parser.get_learned_conditioning
@@ -52,7 +53,7 @@ def hijacked_get_learned_conditioning(model, prompts, steps):
 
         cond_array = []
         for i in range(steps):
-            t = compute_catmull(i/max(1, steps-1), interpolation_control_points)
+            t = apply_sampled_range(i/max(1, steps-1), interpolation_control_points)
             if curve_type == 'catmull':
                 cond_array.append(prompt_parser.ScheduledPromptConditioning(end_at_step=i, cond=compute_catmull(t, control_points)))
             elif curve_type == 'linear':
