@@ -2,7 +2,15 @@ import copy
 import numpy as np
 
 
+def linear_interpolation(t, control_points):
+    return control_points[0] + (control_points[1] - control_points[0]) * t
+
+
 def compute_on_curve_with_points(t, control_points):
+    if len(control_points) == 1:
+        return control_points[0]
+    elif len(control_points) == 2:
+        return linear_interpolation(t, control_points)
     copied_control_points = copy.deepcopy(control_points)
     return compute_casteljau(t, copied_control_points, len(copied_control_points))
 
