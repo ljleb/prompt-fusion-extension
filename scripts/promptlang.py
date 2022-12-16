@@ -19,8 +19,8 @@ saved_get_learned_conditioning = prompt_parser.get_learned_conditioning
 re_INTERPOLATE_TYPE = re.compile(r'\bINTERPOLATE(?:\((bezier|catmull|linear)\))?')
 re_INTERPOLATE_SPLIT = re.compile(r'\bINTERPOLATE(?:\((?:bezier|catmull|linear)\))?')
 
-re_INTERPOLATION_STEPS = re.compile(r'\bINTERPOLATION_STEPS\[(\s*\d+\s*(?:,\s*\d+\s*)*)]')
-re_INTERPOLATION_STEP_VALUES = re.compile(r'\s*(\d+)\s*,?')
+re_INTERPOLATION_STEPS = re.compile(r'\bINTERPOLATION_STEPS\[(\s*(?:(?:\d+)?\.\d+|\d+\.?)\s*(?:,\s*(?:(?:\d+)?\.\d+|\d+\.?)\s*)*)]')
+re_INTERPOLATION_STEP_VALUES = re.compile(r'\s*((?:\d+)?\.\d+|\d+\.?)\s*,?')
 
 
 def hijacked_get_learned_conditioning(model, prompts, steps):
