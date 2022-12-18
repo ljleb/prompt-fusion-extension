@@ -21,15 +21,6 @@ class DeclarationExpression:
         return self.expression.evaluate(steps_range, updated_context)
 
 
-class WeightedExpression:
-    def __init__(self, nested, weight):
-        self.nested = nested
-        self.weight = weight
-
-    def evaluate(self, steps_range, context=dict()):
-        return f"({self.nested.evaluate(steps_range, context)}:{self.weight.evaluate(steps_range, context)})"
-
-
 class RangeExpression:
     def __init__(self, nested, begin, end):
         self.nested = nested
@@ -51,6 +42,15 @@ class RangeExpression:
             result = f'[{result}::{new_steps_range[1] - 1}]'
 
         return result
+
+
+class WeightedExpression:
+    def __init__(self, nested, weight):
+        self.nested = nested
+        self.weight = weight
+
+    def evaluate(self, steps_range, context=dict()):
+        return f"({self.nested.evaluate(steps_range, context)}:{self.weight.evaluate(steps_range, context)})"
 
 
 class WeightInterpolationExpression:
