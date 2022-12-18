@@ -4,8 +4,8 @@ from lark import lark, v_args, Transformer
 
 expression_grammar = r'''
 start: list_expr_opt
-list_expr: expr+ -> list_expr
-list_expr_opt: list_expr? -> list_expr_opt
+?list_expr: expr+ -> list_expr
+?list_expr_opt: expr* -> list_expr
 
 ?expr: substitution_expr
     | definition_expr
@@ -13,26 +13,27 @@ list_expr_opt: list_expr? -> list_expr_opt
     | steps_range_expr
     | text_expr
 
-weight_range_expr: "(" list_expr_opt SINGLE_COLON (weight | range{weight}) ")" -> weight_expr
-?weight: weight_num | substitution_expr
-weight_num: (FLOAT | INTEGER) -> float_expr
+?weight_range_expr: "(" list_expr_opt ":" weight_range_weight ")" -> weight_expr
+?weight_range_weight: weight | range{weight}
+?weight: weight_num | substitution_expr -> flatten_opt
+weight_num: SIGNED_FLOAT -> float_expr
 
-steps_range_expr: "[" list_expr_opt steps_colon (step | range{step}) "]" -> range_expr
-?step: step_num | substitution_expr
+?steps_range_expr: "[" steps_range_exprs steps_range_steps "]" -> range_expr
+?steps_range_steps: step ("," step)* -> flatten_list
+?steps_range_exprs: (list_expr_opt ":")+ -> flatten_list
+?step: (step_num | substitution_expr)? -> flatten_opt
 step_num: INTEGER -> step_expr
 
-?steps_colon: SINGLE_COLON | DOUBLE_COLON
-SINGLE_COLON: ":"
-DOUBLE_COLON: "::"
-
-definition_expr: "$" SYMBOL "=" expr list_expr -> assignment_expr
+?definition_expr: "$" SYMBOL "=" expr list_expr -> assignment_expr
 substitution_expr: "$" SYMBOL -> substitution_expr
 
-text_expr: TEXT -> text_expr
-TEXT: (/[^\[\]():|=$\s]/ | "\\" /[\[\]():|=$\s]/)+
+?text_expr: TEXT -> text_expr
+TEXT: (/[^\[\]():|=$\s\d]/ | "\\" /[\[\]():|=$\s]/)+
 
-range{number}: range_begin{number} "," number? -> range_tuple
-range_begin{number}: number? -> range_begin
+range{number}: range_number{number} "," range_number{number} -> flatten_list
+range_number{number}: number? -> flatten_opt
+
+SIGNED_FLOAT: ("-" | "+")? (FLOAT | INTEGER)
 
 %import common.CNAME -> SYMBOL
 %import common.FLOAT
@@ -42,51 +43,43 @@ range_begin{number}: number? -> range_begin
 %ignore WHITESPACE
 '''
 
-@v_args(inline=True)
+
 class ExpressionTransformer(Transformer):
-    def range_begin(self, value_possibly_omitted=None):
-        return value_possibly_omitted
+    @v_args(inline=True)
+    def flatten_list(self, *args):
+        return args
 
-    # `range_begin` and this function are separate because
-    # lark shifts empty optional non-terminal arguments for some reason
-    def range_tuple(self, left, right_possibly_omitted=None):
-        return left, right_possibly_omitted
+    @v_args(inline=True)
+    def flatten_opt(self, arg=None):
+        return arg
 
-    def step_expr(self, step):
+    def step_expr(self, args):
         # `step + 1` because original language is off by 1
-        return ast.LiftExpression(int(step) + 1)
+        return ast.LiftExpression(int(*args) + 1)
 
-    def float_expr(self, value):
-        return ast.LiftExpression(float(value))
+    def float_expr(self, args):
+        return ast.LiftExpression(float(*args))
 
-    def list_expr(self, *expressions):
-        return ast.ListExpression(expressions)
+    def list_expr(self, args):
+        return ast.ListExpression(args)
 
-    def list_expr_opt(self, list_expr=ast.ListExpression([])):
-        return list_expr
-
-    def weight_expr(self, nested, _colon, weight):
-        if type(weight) is tuple:
-            return ast.WeightInterpolationExpression(nested, weight[0], weight[1])
+    def weight_expr(self, args):
+        if type(args[1]) is tuple:
+            return ast.WeightInterpolationExpression(args[0], *args[1])
         else:
-            return ast.WeightedExpression(nested, weight)
+            return ast.WeightedExpression(*args)
 
-    def range_expr(self, expr, colon, steps):
-        if type(steps) is tuple:
-            return ast.RangeExpression(expr, steps[0], steps[1])
-        elif str(colon) == ':':
-            return ast.RangeExpression(expr, steps, None)
-        else:
-            return ast.RangeExpression(expr, None, steps)
+    def range_expr(self, args):
+        return ast.RangeExpression(*args)
 
-    def assignment_expr(self, symbol, value, scope):
-        return ast.DeclarationExpression(symbol, value, scope)
+    def assignment_expr(self, args):
+        return ast.DeclarationExpression(*args)
 
-    def substitution_expr(self, symbol):
-        return ast.SubstitutionExpression(symbol)
+    def substitution_expr(self, args):
+        return ast.SubstitutionExpression(*args)
 
-    def text_expr(self, value):
-        return ast.LiftExpression(str(value))
+    def text_expr(self, args):
+        return ast.LiftExpression(str(*args))
 
 
 expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=ExpressionTransformer())
@@ -98,6 +91,18 @@ def transpile_prompt(prompt, steps):
 
 
 if __name__ == '__main__':
-    prompt = '$abc = (arst arst arst:1) $abc $abc $abc [(abc:2,3) abc:,]'
-    for e in parse_expression(prompt).children:
-        print(e.evaluate((0, 5)))
+    for i, prompt in enumerate([
+        'some space separated text',
+        '(legacy weighted prompt:-2.1)',
+        'mixed (legacy weight:3.6) and text',
+        'legacy [range begin:0] thingy',
+        'legacy [range end::3] thingy',
+        'legacy [[nested range::3]:2] thingy',
+        'sugar [range:2,3] thingy',
+        'sugar [(weight interpolation:1,2):0,1] thingy',
+        'sugar [(weight interpolation:1,2):0,2] thingy',
+        'sugar [(weight interpolation:1,2):0,3] thingy',
+        'legacy [from:to:2] thingy',
+    ]):
+        for e in parse_expression(prompt).children:
+            print(str(i) + ':\t' + e.evaluate((0, 5)))
