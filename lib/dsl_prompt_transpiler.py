@@ -1,4 +1,4 @@
-import ast_nodes as ast
+import lib.ast_nodes as ast
 from lark import lark, v_args, Transformer
 
 
@@ -92,12 +92,13 @@ expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=Expressio
 parse_expression = expr_parser.parse
 
 def transpile_prompt(prompt, steps):
-    expression, prompt = parse_expression(prompt.lstrip())
+    expression = parse_expression(prompt.lstrip()).children[0]
     return expression.evaluate((0, steps))
 
 
 if __name__ == '__main__':
     for i, prompt in enumerate([
+        'single',
         'some space separated text',
         '(legacy weighted prompt:-2.1)',
         'mixed (legacy weight:3.6) and text',
