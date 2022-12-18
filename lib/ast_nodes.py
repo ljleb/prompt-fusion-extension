@@ -9,18 +9,6 @@ class ListExpression:
         return ' '.join(expressions)
 
 
-class DeclarationExpression:
-    def __init__(self, symbol, nested, expression):
-        self.symbol = symbol
-        self.nested = nested
-        self.expression = expression
-
-    def evaluate(self, steps_range, context=dict()):
-        updated_context = dict(context)
-        updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
-        return self.expression.evaluate(steps_range, updated_context)
-
-
 class RangeExpression:
     def __init__(self, nested, begin, end):
         self.nested = nested
@@ -76,6 +64,18 @@ class WeightInterpolationExpression:
             result += equivalent_expr.evaluate(steps_range, context)
 
         return result
+
+
+class DeclarationExpression:
+    def __init__(self, symbol, nested, expression):
+        self.symbol = symbol
+        self.nested = nested
+        self.expression = expression
+
+    def evaluate(self, steps_range, context=dict()):
+        updated_context = dict(context)
+        updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
+        return self.expression.evaluate(steps_range, updated_context)
 
 
 class SubstitutionExpression:

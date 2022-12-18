@@ -8,6 +8,7 @@ list_expr: expr+ -> list_expr
 list_expr_opt: list_expr? -> list_expr_opt
 
 ?expr: substitution_expr
+    | definition_expr
     | weight_range_expr
     | steps_range_expr
     | text_expr
@@ -24,7 +25,7 @@ step_num: INTEGER -> step_expr
 SINGLE_COLON: ":"
 DOUBLE_COLON: "::"
 
-definition_expr: "$" SYMBOL "=" list_expr -> assignment_expr
+definition_expr: "$" SYMBOL "=" expr list_expr -> assignment_expr
 substitution_expr: "$" SYMBOL -> substitution_expr
 
 text_expr: TEXT -> text_expr
@@ -78,8 +79,8 @@ class ExpressionTransformer(Transformer):
         else:
             return ast.RangeExpression(expr, None, steps)
 
-    def assignment_expr(self, symbol, value):
-        return ast.DeclarationExpression(symbol, value)
+    def assignment_expr(self, symbol, value, scope):
+        return ast.DeclarationExpression(symbol, value, scope)
 
     def substitution_expr(self, symbol):
         return ast.SubstitutionExpression(symbol)
@@ -97,6 +98,6 @@ def transpile_prompt(prompt, steps):
 
 
 if __name__ == '__main__':
-    prompt = 'arst arst [(abc:2,3) abc:,]'
+    prompt = '$abc = (arst arst arst:1) $abc $abc $abc [(abc:2,3) abc:,]'
     for e in parse_expression(prompt).children:
         print(e.evaluate((0, 5)))
