@@ -3,8 +3,10 @@ class ListExpression:
         self.expressions = expressions
 
     def evaluate(self, steps_range, context=dict()):
-        evaluations = [expression.evaluate(steps_range, context) for expression in self.expressions]
-        return ' '.join([evaluation for evaluation in evaluations if evaluation])
+        expressions = filter(
+            lambda e: e,
+            [expression.evaluate(steps_range, context) for expression in self.expressions])
+        return ' '.join(expressions)
 
 
 class DeclarationExpression:
