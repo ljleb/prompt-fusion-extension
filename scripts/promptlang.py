@@ -6,7 +6,7 @@ import sys
 base_dir = scripts.basedir()
 sys.path.append(base_dir)
 
-from lib.prompt_transpiler import transpile_prompt
+from lib.dsl_prompt_transpiler import transpile_prompt
 from lib.catmull import compute_catmull
 from lib.bezier import compute_on_curve_with_points as compute_bezier
 from lib.linear import compute_linear
