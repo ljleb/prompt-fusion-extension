@@ -1,5 +1,3 @@
-from abc import ABC
-
 import modules.scripts as scripts
 from modules import prompt_parser
 import re
@@ -98,9 +96,6 @@ def get_curve_function(prompt):
 
 
 class FusionScript(scripts.Script):
-    def __init__(self):
-        pass
-
     def title(self):
         return "fusion"
 
@@ -108,13 +103,4 @@ class FusionScript(scripts.Script):
         return scripts.AlwaysVisible
 
     def run(self, p, *args):
-        pass
-
-    def process(self, p, *args):
-        pass
-
-    def postprocess_batch(self, p, **kwargs):
-        pass
-
-    def postprocess(self, *args, **kwargs):
         pass
