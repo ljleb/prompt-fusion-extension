@@ -11,12 +11,26 @@ class ListExpression:
 
 class RangeExpression:
     def __init__(self, expressions, steps):
+        assert len(expressions) > 0
+        assert len(steps) > 0
         self.expressions = expressions
         self.steps = steps
 
     def evaluate(self, steps_range, context=dict()):
         result = ''
-        if len(self.steps) == 2:
+        if len(self.steps) == 1:
+            if len(self.expressions) > 2:
+                raise ValueError('more than 2 control points in instantaneous interpolation')
+
+            for expression in self.expressions:
+                result += f'{expression.evaluate(steps_range, context)}:'
+
+            return f'[{result}{self.steps[0].evaluate(steps_range, context) - 1}]'
+
+        elif len(self.steps) > 1:
+            if len(self.expressions) > 1:
+                raise ValueError('interpolation subexpressions using multiple control points are not supported yet')
+
             begin = self.steps[0].evaluate(steps_range, context) if self.steps[0] is not None else steps_range[0]
             end = self.steps[1].evaluate(steps_range, context) if self.steps[1] is not None else steps_range[1]
             new_steps_range = (max(begin, steps_range[0]), min(end, steps_range[1]))
@@ -31,19 +45,29 @@ class RangeExpression:
                 result = f'[{result}::{new_steps_range[1] - 1}]'
 
             return result
-        else:
-            for expression in self.expressions:
-                result += f'{expression.evaluate(steps_range, context)}:'
 
-            return f'[{result}{self.steps[0].evaluate(steps_range, context) - 1}]'
+        else:
+            assert False
+
 
 class WeightedExpression:
-    def __init__(self, nested, weight):
+    def __init__(self, nested, weight=None, positive=True):
         self.nested = nested
+        if not positive:
+            assert weight is None
         self.weight = weight
+        self.positive = positive
 
     def evaluate(self, steps_range, context=dict()):
-        return f'({self.nested.evaluate(steps_range, context)}:{self.weight.evaluate(steps_range, context)})'
+        result = self.nested.evaluate(steps_range, context)
+
+        if self.positive:
+            if self.weight is not None:
+                result = f'{result}:{self.weight.evaluate(steps_range, context)}'
+            return f'({result})'
+
+        else:
+            return f'[{result}]'
 
 
 class WeightInterpolationExpression:
