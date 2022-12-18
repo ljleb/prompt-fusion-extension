@@ -14,12 +14,12 @@ start: list_expr_opt
     | text_expr
 
 ?weight_range_expr: "(" list_expr_opt weight_range_weight ")" -> weight_expr
+                  | "[" list_expr_opt "]" -> negative_weight_expr
 ?weight_range_weight: (":" (weight | range{weight}))? -> flatten_opt
 ?weight: weight_num | substitution_expr
 weight_num: sign (FLOAT | INTEGER) -> float_expr
 
 ?steps_range_expr: "[" steps_range_exprs steps_range_steps "]" -> range_expr
-                 | "[" list_expr_opt "]" -> negative_weight_expr
 ?steps_range_steps: step ("," step)* -> flatten_list
 ?steps_range_exprs: (list_expr_opt ":")+ -> flatten_list
 ?step: (step_num | substitution_expr)? -> flatten_opt
