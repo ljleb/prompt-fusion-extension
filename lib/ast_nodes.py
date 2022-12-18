@@ -3,7 +3,8 @@ class ListExpression:
         self.expressions = expressions
 
     def evaluate(self, steps_range, context=dict()):
-        return ' '.join([expression.evaluate(steps_range, context) for expression in self.expressions])
+        evaluations = [expression.evaluate(steps_range, context) for expression in self.expressions]
+        return ' '.join([evaluation for evaluation in evaluations if evaluation])
 
 
 class DeclarationExpression:
@@ -16,6 +17,15 @@ class DeclarationExpression:
         updated_context = dict(context)
         updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
         return self.expression.evaluate(steps_range, updated_context)
+
+
+class WeightedExpression:
+    def __init__(self, nested, weight):
+        self.nested = nested
+        self.weight = weight
+
+    def evaluate(self, steps_range, context=dict()):
+        return f"({self.nested.evaluate(steps_range, context)}:{self.weight.evaluate(steps_range, context)})"
 
 
 class RangeExpression:
@@ -41,16 +51,6 @@ class RangeExpression:
         return result
 
 
-class WeightedExpression:
-    def __init__(self, nested, weight):
-        self.nested = nested
-        self.weight = weight
-
-    def evaluate(self, steps_range, context=dict()):
-        weight = self.weight.evaluate(steps_range, context)
-        return f'({self.nested.evaluate(steps_range, context)}:{weight})'
-
-
 class WeightInterpolationExpression:
     def __init__(self, nested, weight_begin, weight_end):
         self.nested = nested
@@ -64,11 +64,11 @@ class WeightInterpolationExpression:
             weight_begin = self.weight_begin.evaluate(steps_range, context) if self.weight_begin is not None else 1
             weight_end = self.weight_end.evaluate(steps_range, context) if self.weight_end is not None else 1
             step = i + steps_range[0]
-            tmp_result = self.nested.evaluate((step, step + 1), context)
-            if not tmp_result: continue
+            inner_text = self.nested.evaluate((step, step + 1), context)
+            if not inner_text: continue
 
             weight = weight_begin + (weight_end - weight_begin) * (i / total_steps)
-            tmp_result = f'({tmp_result}:{weight})'
+            tmp_result = f'({inner_text}:{weight})'
 
             if step > steps_range[0]:
                 tmp_result = f'[{tmp_result}:{step - 1}]'
@@ -79,14 +79,6 @@ class WeightInterpolationExpression:
             result += tmp_result
 
         return result
-
-
-class AlternatorExpression:
-    def __init__(self, expressions):
-        self.expressions = expressions
-
-    def evaluate(self, steps_range, context=dict()):
-        return '[' + '|'.join([expression.evaluate(steps_range, context) for expression in self.expressions]) + ']'
 
 
 class SubstitutionExpression:
@@ -106,7 +98,7 @@ class ConversionExpression:
         return self.converter(self.nested.evaluate(steps_range, context))
 
 
-class TextExpression:
+class LiftExpression:
     def __init__(self, text):
         self.text = text
 

@@ -2,34 +2,36 @@ import ast_nodes as ast
 from lark import lark, v_args, Transformer
 
 
-grammar = r"""
-start: list_expr?
+expression_grammar = r"""
+start: list_expr_opt
 list_expr: expr+ -> list_expr
+list_expr_opt: list_expr? -> list_expr_opt
 
-expr: paren_expr
-    | substitution_expr
-    | weight_expr
-    | steps_expr
+expr: substitution_expr
+    | weight_range_expr
+    | steps_range_expr
     | text_expr
 
-?paren_expr: "(" list_expr ")"
-
-weight_expr: expr ":" (weight | range{weight}) -> weight_expr
-weight: weight_num | substitution_expr
+weight_range_expr: "(" list_expr_opt SINGLE_COLON (weight | range{weight}) ")" -> weight_expr
+?weight: weight_num | substitution_expr
 weight_num: (FLOAT | INTEGER) -> float_expr
 
-steps_expr: expr range{steps_expr_range} -> range_expr
-steps_expr_range: step | substitution_expr
-step: INTEGER -> int_expr
+steps_range_expr: "[" list_expr_opt steps_colon (step | range{step}) "]" -> range_expr
+?step: step_num | substitution_expr
+step_num: INTEGER -> int_expr
+
+?steps_colon: SINGLE_COLON | DOUBLE_COLON
+SINGLE_COLON: ":"
+DOUBLE_COLON: "::"
 
 definition_expr: "$" SYMBOL "=" list_expr -> assignment_expr
 substitution_expr: "$" SYMBOL -> substitution_expr
 
 text_expr: TEXT -> text_expr
-TEXT: (/(!<:\[\s*[0-9.]*)/ "," | /[^\[\](),:|=$]/ | "\\" /[\[\](),:|=$]/)+
+TEXT: (/[^\[\]():|=$\s]/ | "\\" /[\[\]():|=$\s]/)+
 
-range{number}: range_begin{number} "," number? "]" -> tuple_expr
-range_begin{number}: "[" number? -> range_begin
+range{number}: range_begin{number} "," number? -> tuple_expr
+range_begin{number}: number? -> range_begin
 
 %import common.CNAME -> SYMBOL
 %import common.FLOAT
@@ -40,38 +42,42 @@ range_begin{number}: "[" number? -> range_begin
 """
 
 @v_args(inline=True)
-class CalculateTree(Transformer):
+class ExpressionTransformer(Transformer):
     def range_begin(self, value=None):
         return value
 
     def tuple_expr(self, left, right=None):
-        left = left.children[0] if left is not None else None
-        right = right.children[0] if right is not None else None
         return left, right
 
     def int_expr(self, value):
-        return ast.TextExpression(int(value))
+        return ast.LiftExpression(int(value) + 1)
 
     def float_expr(self, value):
-        return ast.TextExpression(float(value))
+        return ast.LiftExpression(float(value))
 
-    def list_expr(self, expressions):
-        expressions = expressions.children
+    def list_expr(self, *expressions):
+        expressions = [children for expression in expressions for children in expression.children]
         return ast.ListExpression(expressions)
 
-    def weight_expr(self, nested, weight):
-        nested = nested.children[0]
+    def list_expr_opt(self, list_expr=ast.ListExpression([])):
+        return list_expr
+
+    def weight_expr(self, nested, _colon, weight):
         if type(weight) is tuple:
             return ast.WeightInterpolationExpression(
                 nested,
                 ast.ConversionExpression(weight[0], float) if weight[0] is not None else None,
                 ast.ConversionExpression(weight[1], float) if weight[1] is not None else None)
         else:
-            return ast.WeightedExpression(nested, ast.ConversionExpression(weight, float))
+            return ast.WeightedExpression(nested, weight)
 
-    def range_expr(self, expr, range_):
-        print(range_)
-        return ast.RangeExpression(expr, range_[0], range_[1])
+    def range_expr(self, expr, colon, steps):
+        if type(steps) is tuple:
+            return ast.RangeExpression(expr, steps[0], steps[1])
+        elif str(colon) == ":":
+            return ast.RangeExpression(expr, steps, None)
+        else:
+            return ast.RangeExpression(expr, None, steps)
 
     def assignment_expr(self, symbol, value):
         return ast.DeclarationExpression(symbol, value)
@@ -80,10 +86,10 @@ class CalculateTree(Transformer):
         return ast.SubstitutionExpression(symbol)
 
     def text_expr(self, value):
-        return ast.TextExpression(value)
+        return ast.LiftExpression(str(value))
 
 
-expr_parser = lark.Lark(grammar, parser='lalr', transformer=CalculateTree())
+expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=ExpressionTransformer())
 parse_expression = expr_parser.parse
 
 def transpile_prompt(prompt, steps):
@@ -92,6 +98,6 @@ def transpile_prompt(prompt, steps):
 
 
 if __name__ == '__main__':
-    prompt = 'abc[1,]'
+    prompt = '[(abc:2,3):,1]'
     for e in parse_expression(prompt).children:
         print(e.evaluate((0, 20)))
