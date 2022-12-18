@@ -3,7 +3,72 @@ class ListExpression:
         self.expressions = expressions
 
     def evaluate(self, steps_range, context=dict()):
-        return ' '.join([expression.evaluate(steps_range, context) for expression in self.expressions])
+        expressions = filter(
+            lambda e: e,
+            [expression.evaluate(steps_range, context) for expression in self.expressions])
+        return ' '.join(expressions)
+
+
+class RangeExpression:
+    def __init__(self, expressions, steps):
+        self.expressions = expressions
+        self.steps = steps
+
+    def evaluate(self, steps_range, context=dict()):
+        result = ''
+        if len(self.steps) == 2:
+            begin = self.steps[0].evaluate(steps_range, context) if self.steps[0] is not None else steps_range[0]
+            end = self.steps[1].evaluate(steps_range, context) if self.steps[1] is not None else steps_range[1]
+            new_steps_range = (max(begin, steps_range[0]), min(end, steps_range[1]))
+            if new_steps_range[0] >= new_steps_range[1]:
+                return ''
+
+            result = self.expressions[0].evaluate(new_steps_range, context)
+            if begin > steps_range[0]:
+                result = f'[{result}:{new_steps_range[0] - 1}]'
+
+            if end < steps_range[1]:
+                result = f'[{result}::{new_steps_range[1] - 1}]'
+
+            return result
+        else:
+            for expression in self.expressions:
+                result += f'{expression.evaluate(steps_range, context)}:'
+
+            return f'[{result}{self.steps[0].evaluate(steps_range, context) - 1}]'
+
+class WeightedExpression:
+    def __init__(self, nested, weight):
+        self.nested = nested
+        self.weight = weight
+
+    def evaluate(self, steps_range, context=dict()):
+        return f'({self.nested.evaluate(steps_range, context)}:{self.weight.evaluate(steps_range, context)})'
+
+
+class WeightInterpolationExpression:
+    def __init__(self, nested, weight_begin, weight_end):
+        self.nested = nested
+        self.weight_begin = weight_begin
+        self.weight_end = weight_end
+
+    def evaluate(self, steps_range, context=dict()):
+        total_steps = steps_range[1] - steps_range[0]
+        result = ''
+        weight_begin = self.weight_begin.evaluate(steps_range, context) if self.weight_begin is not None else 1
+        weight_end = self.weight_end.evaluate(steps_range, context) if self.weight_end is not None else 1
+
+        for i in range(total_steps):
+            step = i + steps_range[0]
+            inner_text = self.nested.evaluate((step, step + 1), context)
+            if not inner_text: continue
+
+            weight = weight_begin + (weight_end - weight_begin) * (i / total_steps)
+            equivalent_expr = WeightedExpression(LiftExpression(inner_text), LiftExpression(weight))
+            equivalent_expr = RangeExpression([equivalent_expr], [LiftExpression(step), LiftExpression(step + 1)])
+            result += equivalent_expr.evaluate(steps_range, context)
+
+        return result
 
 
 class DeclarationExpression:
@@ -18,75 +83,6 @@ class DeclarationExpression:
         return self.expression.evaluate(steps_range, updated_context)
 
 
-class RangeExpression:
-    def __init__(self, nested, begin, end):
-        self.nested = nested
-        self.begin = begin
-        self.end = end
-
-    def evaluate(self, steps_range, context=dict()):
-        new_steps_range = (
-            max(self.begin, steps_range[0]) if self.begin is not None else steps_range[0],
-            min(self.end, steps_range[1]) if self.end is not None else steps_range[1]
-        )
-        if new_steps_range[0] >= new_steps_range[1]:
-            return ''
-
-        result = self.nested.evaluate(new_steps_range, context)
-        if self.begin and self.begin > steps_range[0]:
-            result = f'[{result}:{new_steps_range[0] - 1}]'
-
-        if self.end and self.end < steps_range[1]:
-            result = f'[{result}::{new_steps_range[1] - 1}]'
-
-        return result
-
-
-class WeightedExpression:
-    def __init__(self, nested, weight):
-        self.nested = nested
-        self.weight = weight
-
-    def evaluate(self, steps_range, context=dict()):
-        return f'({self.nested.evaluate(steps_range, context)}:{self.weight})'
-
-
-class WeightInterpolationExpression:
-    def __init__(self, nested, weight_begin, weight_end):
-        self.nested = nested
-        self.weight_begin = weight_begin if weight_begin is not None else 1
-        self.weight_end = weight_end if weight_end is not None else 1
-
-    def evaluate(self, steps_range, context=dict()):
-        total_steps = steps_range[1] - steps_range[0]
-        result = ''
-        for i in range(total_steps):
-            step = i + steps_range[0]
-            tmp_result = self.nested.evaluate((step, step + 1), context)
-            if not tmp_result: continue
-
-            weight = self.weight_begin + (self.weight_end - self.weight_begin) * (i / total_steps)
-            tmp_result = f'({tmp_result}:{weight})'
-
-            if step > steps_range[0]:
-                tmp_result = f'[{tmp_result}:{step - 1}]'
-
-            if step < steps_range[1] - 1:
-                tmp_result = f'[{tmp_result}::{step}]'
-
-            result += tmp_result
-
-        return result
-
-
-class AlternatorExpression:
-    def __init__(self, expressions):
-        self.expressions = expressions
-
-    def evaluate(self, steps_range, context=dict()):
-        return '[' + '|'.join([expression.evaluate(steps_range, context) for expression in self.expressions]) + ']'
-
-
 class SubstitutionExpression:
     def __init__(self, symbol):
         self.symbol = symbol
@@ -95,10 +91,9 @@ class SubstitutionExpression:
         return context[self.symbol]
 
 
-class TextExpression:
+class LiftExpression:
     def __init__(self, text):
         self.text = text
 
     def evaluate(self, steps_range, context=dict()):
         return self.text
-
