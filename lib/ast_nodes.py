@@ -60,23 +60,18 @@ class WeightInterpolationExpression:
     def evaluate(self, steps_range, context=dict()):
         total_steps = steps_range[1] - steps_range[0]
         result = ''
+        weight_begin = self.weight_begin.evaluate(steps_range, context) if self.weight_begin is not None else 1
+        weight_end = self.weight_end.evaluate(steps_range, context) if self.weight_end is not None else 1
+
         for i in range(total_steps):
-            weight_begin = self.weight_begin.evaluate(steps_range, context) if self.weight_begin is not None else 1
-            weight_end = self.weight_end.evaluate(steps_range, context) if self.weight_end is not None else 1
             step = i + steps_range[0]
             inner_text = self.nested.evaluate((step, step + 1), context)
             if not inner_text: continue
 
             weight = weight_begin + (weight_end - weight_begin) * (i / total_steps)
-            tmp_result = f'({inner_text}:{weight})'
-
-            if step > steps_range[0]:
-                tmp_result = f'[{tmp_result}:{step - 1}]'
-
-            if step < steps_range[1] - 1:
-                tmp_result = f'[{tmp_result}::{step}]'
-
-            result += tmp_result
+            equivalent_expr = WeightedExpression(LiftExpression(inner_text), LiftExpression(weight))
+            equivalent_expr = RangeExpression(equivalent_expr, LiftExpression(step), LiftExpression(step + 1))
+            result += equivalent_expr.evaluate(steps_range, context)
 
         return result
 

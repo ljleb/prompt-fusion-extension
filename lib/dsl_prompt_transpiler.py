@@ -98,6 +98,6 @@ def transpile_prompt(prompt, steps):
 
 
 if __name__ == '__main__':
-    prompt = '[(abc:2,3):,1]'
+    prompt = '[(abc:2,3):,]'
     for e in parse_expression(prompt).children:
-        print(e.evaluate((0, 20)))
+        print(e.evaluate((0, 5)))
