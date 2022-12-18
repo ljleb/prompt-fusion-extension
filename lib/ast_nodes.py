@@ -86,15 +86,6 @@ class SubstitutionExpression:
         return context[self.symbol]
 
 
-class ConversionExpression:
-    def __init__(self, nested, converter):
-        self.nested = nested
-        self.converter = converter
-
-    def evaluate(self, steps_range, context=dict()):
-        return self.converter(self.nested.evaluate(steps_range, context))
-
-
 class LiftExpression:
     def __init__(self, text):
         self.text = text
