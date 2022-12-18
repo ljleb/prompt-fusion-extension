@@ -13,9 +13,9 @@ start: list_expr_opt
     | steps_range_expr
     | text_expr
 
-?weight_range_expr: "(" list_expr_opt ":" weight_range_weight ")" -> weight_expr
-?weight_range_weight: weight | range{weight}
-?weight: weight_num | substitution_expr -> flatten_opt
+?weight_range_expr: "(" list_expr_opt weight_range_weight ")" -> weight_expr
+?weight_range_weight: (":" (weight | range{weight}))? -> flatten_opt
+?weight: weight_num | substitution_expr
 weight_num: sign (FLOAT | INTEGER) -> float_expr
 
 ?steps_range_expr: "[" steps_range_exprs steps_range_steps "]" -> range_expr
