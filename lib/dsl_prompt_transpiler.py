@@ -74,7 +74,7 @@ class ExpressionTransformer(Transformer):
     def range_expr(self, expr, colon, steps):
         if type(steps) is tuple:
             return ast.RangeExpression(expr, steps[0], steps[1])
-        elif str(colon) == ":":
+        elif str(colon) == ':':
             return ast.RangeExpression(expr, steps, None)
         else:
             return ast.RangeExpression(expr, None, steps)
