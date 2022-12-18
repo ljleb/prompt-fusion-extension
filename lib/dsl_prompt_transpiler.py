@@ -16,25 +16,28 @@ start: list_expr_opt
 ?weight_range_expr: "(" list_expr_opt ":" weight_range_weight ")" -> weight_expr
 ?weight_range_weight: weight | range{weight}
 ?weight: weight_num | substitution_expr -> flatten_opt
-weight_num: SIGNED_FLOAT -> float_expr
+weight_num: sign (FLOAT | INTEGER) -> float_expr
 
 ?steps_range_expr: "[" steps_range_exprs steps_range_steps "]" -> range_expr
 ?steps_range_steps: step ("," step)* -> flatten_list
 ?steps_range_exprs: (list_expr_opt ":")+ -> flatten_list
 ?step: (step_num | substitution_expr)? -> flatten_opt
-step_num: INTEGER -> step_expr
+step_num: sign INTEGER -> step_expr
 
 ?definition_expr: "$" SYMBOL "=" expr list_expr -> assignment_expr
 substitution_expr: "$" SYMBOL -> substitution_expr
 
-?text_expr: TEXT -> text_expr
-TEXT: (/[^\[\]():|=$\s\d]/ | "\\" /[\[\]():|=$\s]/)+
+?text_expr: (TEXT | DIGIT | COMMA)+ -> text_expr
+TEXT: /[^\[\]():|=$\s\d\-+]/+
+
+COMMA: ","
 
 range{number}: range_number{number} "," range_number{number} -> flatten_list
 range_number{number}: number? -> flatten_opt
 
-SIGNED_FLOAT: ("-" | "+")? (FLOAT | INTEGER)
-
+sign: SIGN? -> flatten_opt
+SIGN: "-" | "+"
+%import common.DIGIT
 %import common.CNAME -> SYMBOL
 %import common.FLOAT
 %import common.INT -> INTEGER
@@ -54,11 +57,14 @@ class ExpressionTransformer(Transformer):
         return arg
 
     def step_expr(self, args):
+        args = [arg for arg in args if arg is not None]
+
         # `step + 1` because original language is off by 1
-        return ast.LiftExpression(int(*args) + 1)
+        return ast.LiftExpression(int(''.join(args)) + 1)
 
     def float_expr(self, args):
-        return ast.LiftExpression(float(*args))
+        args = filter(lambda arg: arg is not None, args)
+        return ast.LiftExpression(float(''.join(args)))
 
     def list_expr(self, args):
         return ast.ListExpression(args)
@@ -79,7 +85,7 @@ class ExpressionTransformer(Transformer):
         return ast.SubstitutionExpression(*args)
 
     def text_expr(self, args):
-        return ast.LiftExpression(str(*args))
+        return ast.LiftExpression(str(' '.join(args)))
 
 
 expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=ExpressionTransformer())
