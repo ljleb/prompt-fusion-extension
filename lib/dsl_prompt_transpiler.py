@@ -2,7 +2,7 @@ import ast_nodes as ast
 from lark import lark, v_args, Transformer
 
 
-expression_grammar = r"""
+expression_grammar = r'''
 start: list_expr_opt
 list_expr: expr+ -> list_expr
 list_expr_opt: list_expr? -> list_expr_opt
@@ -39,7 +39,7 @@ range_begin{number}: number? -> range_begin
 
 %import common.WS -> WHITESPACE
 %ignore WHITESPACE
-"""
+'''
 
 @v_args(inline=True)
 class ExpressionTransformer(Transformer):

@@ -50,7 +50,7 @@ class WeightedExpression:
         self.weight = weight
 
     def evaluate(self, steps_range, context=dict()):
-        return f"({self.nested.evaluate(steps_range, context)}:{self.weight.evaluate(steps_range, context)})"
+        return f'({self.nested.evaluate(steps_range, context)}:{self.weight.evaluate(steps_range, context)})'
 
 
 class WeightInterpolationExpression:
