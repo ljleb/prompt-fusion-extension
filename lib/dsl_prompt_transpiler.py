@@ -139,6 +139,9 @@ if __name__ == '__main__':
         ['legacy (positive weight)']*2,
         ['[abc:1girl:2]']*2,
         ['dashes-in-text']*2,
+        ['{prompt}']*2,
+        ['[abc|def ghi|jkl]']*2,
+        ['merging this AND with this']*2,
         # ['\:']*2,
 
         # ['[top level:interpolatin:lik a pro:1,3,5: linear]']*2,
