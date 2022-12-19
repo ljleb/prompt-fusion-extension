@@ -1,7 +1,7 @@
 def apply_sampled_range(t, positions):
     distances = []
     for i in range(len(positions)-1):
-        distances.append(positions[i] - positions[i+1])
+        distances.append(positions[i+1] - positions[i])
     total_distance = sum(distances)
     for i in range(len(distances)):
         distances[i] = distances[i]/total_distance
