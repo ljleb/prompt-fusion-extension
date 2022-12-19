@@ -38,7 +38,7 @@ INTERPOLATION_FUNCTION: "linear"
 substitution_expr: "$" SYMBOL -> substitution_expr
 
 ?text_expr: (TEXT | DIGIT | COMMA)+ -> text_expr
-TEXT: /[^\[\]\(\):\s]+/
+TEXT: /[^\[\]\(\):$\s]/+
 
 COMMA: ","
 
@@ -142,6 +142,7 @@ if __name__ == '__main__':
         ['{prompt}']*2,
         ['[abc|def ghi|jkl]']*2,
         ['merging this AND with this']*2,
+        ('$a = (prompt value:1) $a', '(prompt value:1.0)'),
         # ['\:']*2,
 
         # ['[top level:interpolatin:lik a pro:1,3,5: linear]']*2,

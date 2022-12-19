@@ -47,7 +47,6 @@ class InterpolationExpression:
 
             return result
 
-
     def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=None):
         from lib.interpolation_conditioning import InterpolationConditioning
 
@@ -137,6 +136,11 @@ class DeclarationExpression:
         updated_context = dict(context) if context is not None else {}
         updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
         return self.expression.evaluate(steps_range, updated_context)
+
+    def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=None):
+        updated_context = dict(context) if context is not None else {}
+        updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
+        return self.expression.get_interpolation_conditioning(model, get_learned_conditioning, steps_range, updated_context)
 
 
 class SubstitutionExpression:
