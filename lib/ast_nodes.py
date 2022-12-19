@@ -2,7 +2,7 @@ class ListExpression:
     def __init__(self, expressions):
         self.expressions = expressions
 
-    def evaluate(self, steps_range, context=dict()):
+    def evaluate(self, steps_range, context=None):
         expressions = filter(
             lambda e: e,
             [expression.evaluate(steps_range, context) for expression in self.expressions])
@@ -17,7 +17,7 @@ class RangeExpression:
         self.steps = steps
         self.function_name = function_name
 
-    def evaluate(self, steps_range, context=dict()):
+    def evaluate(self, steps_range, context=None):
         result = ''
         if len(self.steps) == 1:
             if len(self.expressions) > 2:
@@ -50,7 +50,7 @@ class RangeExpression:
         else:
             assert False
 
-    def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=dict()):
+    def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=None):
         from lib.interpolation_conditioning import InterpolationConditioning
 
         total_steps = steps_range[1]
@@ -92,7 +92,7 @@ class WeightedExpression:
         self.weight = weight
         self.positive = positive
 
-    def evaluate(self, steps_range, context=dict()):
+    def evaluate(self, steps_range, context=None):
         result = self.nested.evaluate(steps_range, context)
 
         if self.positive:
@@ -110,7 +110,7 @@ class WeightInterpolationExpression:
         self.weight_begin = weight_begin
         self.weight_end = weight_end
 
-    def evaluate(self, steps_range, context=dict()):
+    def evaluate(self, steps_range, context=None):
         total_steps = steps_range[1] - steps_range[0]
         result = ''
         weight_begin = self.weight_begin.evaluate(steps_range, context) if self.weight_begin is not None else 1
@@ -135,8 +135,8 @@ class DeclarationExpression:
         self.nested = nested
         self.expression = expression
 
-    def evaluate(self, steps_range, context=dict()):
-        updated_context = dict(context)
+    def evaluate(self, steps_range, context=None):
+        updated_context = dict(context) if context is not None else {}
         updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
         return self.expression.evaluate(steps_range, updated_context)
 
@@ -145,7 +145,8 @@ class SubstitutionExpression:
     def __init__(self, symbol):
         self.symbol = symbol
 
-    def evaluate(self, steps_range, context=dict()):
+    def evaluate(self, steps_range, context=None):
+        context = context if context is not None else {}
         return context[self.symbol]
 
 
@@ -153,5 +154,5 @@ class LiftExpression:
     def __init__(self, text):
         self.text = text
 
-    def evaluate(self, steps_range, context=dict()):
+    def evaluate(self, steps_range, context=None):
         return self.text
