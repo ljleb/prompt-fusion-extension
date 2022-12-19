@@ -10,11 +10,12 @@ class ListExpression:
 
 
 class RangeExpression:
-    def __init__(self, expressions, steps):
+    def __init__(self, expressions, steps, function_name='linear'):
         assert len(expressions) > 0
         assert len(steps) > 0
         self.expressions = expressions
         self.steps = steps
+        self.function_name = function_name
 
     def evaluate(self, steps_range, context=dict()):
         result = ''
@@ -48,6 +49,39 @@ class RangeExpression:
 
         else:
             assert False
+
+    def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=dict()):
+        from lib.interpolation_conditioning import InterpolationConditioning
+
+        total_steps = steps_range[1]
+
+        conditionings = []
+        for expression in self.expressions:
+            prompt = expression.evaluate(steps_range, context)
+            conditionings.append(get_learned_conditioning(model, [prompt], total_steps)[0][0].cond)
+
+        control_points = []
+        if len(self.steps) < 2:
+            control_points.append(0.)
+            control_points.append(1.)
+
+        else:
+            for step in self.steps:
+                control_point = step.evaluate(steps_range, context)
+                control_points.append(control_point / total_steps)
+
+        return InterpolationConditioning(conditionings, control_points, self.get_curve_function())
+
+    def get_curve_function(self):
+        from lib.catmull import compute_catmull
+        from lib.bezier import compute_on_curve_with_points as compute_bezier
+        from lib.linear import compute_linear
+
+        return {
+            'catmull': compute_catmull,
+            'linear': compute_linear,
+            'bezier': compute_bezier,
+        }[self.function_name]
 
 
 class WeightedExpression:
