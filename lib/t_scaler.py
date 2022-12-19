@@ -16,11 +16,12 @@ def apply_sampled_range(t, positions):
         else:
             break
 
-    if spline_index > len(distances):
+    if spline_index >= len(distances) - 1:
         return 1
 
     local_ratio = (t - distances[spline_index]) / (distances[spline_index+1] - distances[spline_index])
     return (spline_index + local_ratio)/(len(distances)-1)
+
 
 if __name__ == "__main__":
     print(apply_sampled_range(0.3, [0, 10, 30]))

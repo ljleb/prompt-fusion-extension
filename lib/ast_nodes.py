@@ -9,36 +9,36 @@ class ListExpression:
         return ' '.join(expressions)
 
 
-class RangeExpression:
+class InterpolationExpression:
     def __init__(self, expressions, steps, function_name='linear'):
         assert len(expressions) > 0
         assert len(steps) > 0
-        self.expressions = expressions
-        self.steps = steps
-        self.function_name = function_name
+        self.__expressions = expressions
+        self.__steps = steps
+        self.__function_name = function_name
 
     def evaluate(self, steps_range, context):
         result = ''
-        if len(self.steps) == 1:
-            if len(self.expressions) > 2:
+        if len(self.__steps) == 1:
+            if len(self.__expressions) > 2:
                 raise ValueError('more than 2 control points in instantaneous interpolation')
 
-            for expression in self.expressions:
+            for expression in self.__expressions:
                 result += f'{expression.evaluate(steps_range, context)}:'
 
-            return f'[{result}{self.steps[0].evaluate(steps_range, context) - 1}]'
+            return f'[{result}{self.__steps[0].evaluate(steps_range, context) - 1}]'
 
-        elif len(self.steps) > 1:
-            if len(self.expressions) > 1:
+        elif len(self.__steps) > 1:
+            if len(self.__expressions) > 1:
                 raise ValueError('interpolation subexpressions using multiple control points are not supported yet')
 
-            begin = self.steps[0].evaluate(steps_range, context) if self.steps[0] is not None else steps_range[0]
-            end = self.steps[1].evaluate(steps_range, context) if self.steps[1] is not None else steps_range[1]
+            begin = self.__steps[0].evaluate(steps_range, context) if self.__steps[0] is not None else steps_range[0]
+            end = self.__steps[1].evaluate(steps_range, context) if self.__steps[1] is not None else steps_range[1]
             new_steps_range = (max(begin, steps_range[0]), min(end, steps_range[1]))
             if new_steps_range[0] >= new_steps_range[1]:
                 return ''
 
-            result = self.expressions[0].evaluate(new_steps_range, context)
+            result = self.__expressions[0].evaluate(new_steps_range, context)
             if begin > steps_range[0]:
                 result = f'[{result}:{new_steps_range[0] - 1}]'
 
@@ -47,8 +47,6 @@ class RangeExpression:
 
             return result
 
-        else:
-            assert False
 
     def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=None):
         from lib.interpolation_conditioning import InterpolationConditioning
@@ -56,17 +54,17 @@ class RangeExpression:
         total_steps = steps_range[1]
 
         conditionings = []
-        for expression in self.expressions:
+        for expression in self.__expressions:
             prompt = expression.evaluate(steps_range, context)
             conditionings.append(get_learned_conditioning(model, [prompt], total_steps)[0][0].cond)
 
         control_points = []
-        if len(self.steps) < 2:
+        if len(self.__steps) < 2:
             control_points.append(0.)
             control_points.append(1.)
 
         else:
-            for step in self.steps:
+            for step in self.__steps:
                 control_point = step.evaluate(steps_range, context)
                 control_points.append(control_point / total_steps)
 
@@ -81,7 +79,7 @@ class RangeExpression:
             'catmull': compute_catmull,
             'linear': compute_linear,
             'bezier': compute_bezier,
-        }[self.function_name]
+        }[self.__function_name]
 
 
 class WeightedExpression:
@@ -123,7 +121,7 @@ class WeightInterpolationExpression:
 
             weight = weight_begin + (weight_end - weight_begin) * (i / total_steps)
             equivalent_expr = WeightedExpression(LiftExpression(inner_text), LiftExpression(weight))
-            equivalent_expr = RangeExpression([equivalent_expr], [LiftExpression(step), LiftExpression(step + 1)])
+            equivalent_expr = InterpolationExpression([equivalent_expr], [LiftExpression(step), LiftExpression(step + 1)])
             result += equivalent_expr.evaluate(steps_range, context)
 
         return result

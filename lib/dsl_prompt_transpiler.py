@@ -1,4 +1,4 @@
-import ast_nodes as ast
+import lib.ast_nodes as ast
 from lark import lark, v_args, Transformer
 
 
@@ -10,7 +10,7 @@ start: list_expr_opt
 ?expr: substitution_expr
     | definition_expr
     | weight_range_expr
-    | steps_range_expr
+    | interpolation_expr
     | text_expr
 
 ?weight_range_expr: "(" list_expr_opt weight_range_weight ")" -> weight_expr
@@ -20,11 +20,11 @@ start: list_expr_opt
 weight_num: WEIGHT_NUM -> float_expr
 WEIGHT_NUM: SIGN? (FLOAT | INTEGER) /\b/
 
-?steps_range_expr: "[" steps_range_exprs steps_range_single_step "]" -> range_expr
-                 | "[" steps_range_exprs steps_range_steps interpolation_parameter "]" -> range_expr
-?steps_range_single_step: step -> flatten_list
-?steps_range_steps: step ("," step)+ -> flatten_list
-?steps_range_exprs: (list_expr_opt ":")+ -> flatten_list
+?interpolation_expr: "[" interpolation_subexprs interpolation_single_step "]" -> interpolation_expr
+                 | "[" interpolation_subexprs interpolation_steps interpolation_parameter "]" -> interpolation_expr
+?interpolation_single_step: step -> flatten_list
+?interpolation_steps: step ("," step)+ -> flatten_list
+?interpolation_subexprs: (list_expr_opt ":")+ -> flatten_list
 ?step: (step_num | substitution_expr)? -> flatten_opt
 step_num: STEP_NUM -> step_expr
 STEP_NUM: SIGN? INTEGER /\b/
@@ -89,9 +89,9 @@ class ExpressionTransformer(Transformer):
     def negative_weight_expr(self, args):
         return ast.WeightedExpression(*args, positive=False)
 
-    def range_expr(self, args):
+    def interpolation_expr(self, args):
         function_name = str(args[2]) if args[2:] else None
-        return ast.RangeExpression(args[0], args[1], function_name)
+        return ast.InterpolationExpression(args[0], args[1], function_name)
 
     def assignment_expr(self, args):
         return ast.DeclarationExpression(*args)
@@ -106,6 +106,7 @@ class ExpressionTransformer(Transformer):
 expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=ExpressionTransformer())
 parse_expression = expr_parser.parse
 
+
 def transpile_prompt(prompt, steps):
     expression = parse_prompt(prompt)
     return expression.evaluate((0, steps), None)
@@ -114,7 +115,7 @@ def transpile_prompt(prompt, steps):
 def parse_prompt(prompt):
     expression = parse_expression(prompt.lstrip()).children[0]
     if not hasattr(expression, 'get_interpolation_conditioning'):
-        return ast.RangeExpression([expression], [ast.LiftExpression(0.)])
+        return ast.InterpolationExpression([expression], [ast.LiftExpression(0.)])
     else:
         return expression
 
@@ -138,12 +139,13 @@ if __name__ == '__main__':
         ['legacy (positive weight)']*2,
         ['[abc:1girl:2]']*2,
         ['dashes-in-text']*2,
+        # ['\:']*2,
 
         # ['[top level:interpolatin:lik a pro:1,3,5: linear]']*2,
     ]):
         try:
             for e in parse_expression(prompt[0]).children:
-                v = e.evaluate((0, 5))
+                v = e.evaluate((0, 5), None)
                 assert v == prompt[1], f"'{v}' != '{prompt[1]}'"
         except Exception as e:
             print(prompt[0])
