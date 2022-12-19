@@ -143,6 +143,7 @@ if __name__ == '__main__':
         ['[abc|def ghi|jkl]']*2,
         ['merging this AND with this']*2,
         ('$a = (prompt value:1) $a', '(prompt value:1.0)'),
+        ('$a = (prompt value:1) $b = $a $b', '(prompt value:1.0)'),
         # ['\:']*2,
 
         # ['[top level:interpolatin:lik a pro:1,3,5: linear]']*2,
