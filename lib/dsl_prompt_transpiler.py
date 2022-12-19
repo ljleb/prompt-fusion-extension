@@ -108,7 +108,7 @@ parse_expression = expr_parser.parse
 
 def transpile_prompt(prompt, steps):
     expression = parse_prompt(prompt)
-    return expression.evaluate((0, steps))
+    return expression.evaluate((0, steps), None)
 
 
 def parse_prompt(prompt):
@@ -137,7 +137,7 @@ if __name__ == '__main__':
         ['legacy [negative weight]']*2,
         ['legacy (positive weight)']*2,
         ['[abc:1girl:2]']*2,
-        # ['dashes-in-text']*2,
+        ['dashes-in-text']*2,
 
         # ['[top level:interpolatin:lik a pro:1,3,5: linear]']*2,
     ]):
