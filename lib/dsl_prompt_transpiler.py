@@ -56,7 +56,7 @@ SIGN: "-" | "+"
 '''
 
 
-class ExpressionTransformer(Transformer):
+class ExpressionLarkTransformer(Transformer):
     @v_args(inline=True)
     def flatten_list(self, *args):
         return args
@@ -103,7 +103,7 @@ class ExpressionTransformer(Transformer):
         return ast.LiftExpression(str(' '.join(args)))
 
 
-expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=ExpressionTransformer())
+expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=ExpressionLarkTransformer())
 parse_expression = expr_parser.parse
 
 
