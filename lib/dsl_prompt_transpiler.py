@@ -4,33 +4,31 @@ from lark import lark, v_args, Transformer
 
 
 expression_grammar = r'''
-start: expr* -> list_expr
+?start: list_expr_opt
 ?list_expr: expr+ -> list_expr
-?interpolation_list_expr_opt: general_expr{interpolation_text_expr}* -> list_expr
+?list_expr_opt: expr* -> list_expr
 
-?expr: general_expr{text_expr}
+?expr: substitution_expr
+     | definition_expr
+     | weight_range_expr
+     | interpolation_expr
+     | text_expr
 
-?general_expr{default_expr}: substitution_expr
-                       | definition_expr
-                       | weight_range_expr
-                       | interpolation_expr
-                       | default_expr
-
-?weight_range_expr: "(" interpolation_list_expr_opt weight_range_weight ")" -> weight_expr
-                  | "[" interpolation_list_expr_opt "]" -> negative_weight_expr
+?weight_range_expr: "(" list_expr_opt weight_range_weight ")" -> weight_expr
+                  | "[" list_expr_opt "]" -> negative_weight_expr
 ?weight_range_weight: (":" (weight | range{weight}))? -> flatten_opt
 ?weight: weight_num | substitution_expr
-weight_num: WEIGHT_NUM -> float_expr
-WEIGHT_NUM: SIGN? (FLOAT | INTEGER) /\b/
+weight_num: weight_num_txt -> float_expr
+?weight_num_txt: SIGN? (FLOAT | INTEGER) -> concat
 
 ?interpolation_expr: "[" interpolation_subexprs interpolation_single_step "]" -> interpolation_expr
                    | "[" interpolation_subexprs interpolation_steps interpolation_parameter "]" -> interpolation_expr
-?interpolation_subexprs: (interpolation_list_expr_opt ":")+ -> flatten_list
+?interpolation_subexprs: (list_expr_opt ":")+ -> flatten_list
 ?interpolation_single_step: step -> flatten_list
 ?interpolation_steps: step ("," step)+ -> flatten_list
 ?step: (step_num | substitution_expr)? -> flatten_opt
-step_num: STEP_NUM -> step_expr
-STEP_NUM: SIGN? INTEGER /\b/
+step_num: step_num_txt -> step_expr
+step_num_txt: SIGN? INTEGER -> concat
 
 ?interpolation_parameter: (":" INTERPOLATION_FUNCTION)? -> flatten_opt
 INTERPOLATION_FUNCTION: "linear"
@@ -40,19 +38,21 @@ INTERPOLATION_FUNCTION: "linear"
 ?definition_expr: "$" SYMBOL "=" expr list_expr -> assignment_expr
 substitution_expr: "$" SYMBOL -> substitution_expr
 
-?interpolation_text_expr: INTERPOLATION_TEXT+ -> text_expr
-?text_expr: (TEXT | INTERPOLATION_TEXT | FLOAT | INTEGER)+ -> text_expr
-INTERPOLATION_TEXT: /(?!([+\-]?(\d+\.?|\d*\.\d+))?\s*(,\s*(([+\-]?(\d+\.?|\d*\.\d+)|\$[a-zA-Z_]\w*)\s*)?)*[\]:])([^\[\]\(\):$\\\s]|\\.)+/
-TEXT: /(?![+\-]?(\d+\.?|\d*\.\d+)\b)([^\[\]\(\):$,\\\s]|\\.)+/
+?text_expr: TEXT+ -> text_expr
+TEXT: /([^\[\]\(\):$\\\s]|\\.)+/
+COMMA.1: ","
 
 range{number}: range_number{number} "," range_number{number} -> flatten_list
 range_number{number}: number? -> flatten_opt
 
 SIGN: "-" | "+"
-%import common.DIGIT
+
+INTEGER.1: FREE_INTEGER /\b/
+FLOAT.1: FREE_FLOAT /\b/
+
 %import common.CNAME -> SYMBOL
-%import common.FLOAT
-%import common.INT -> INTEGER
+%import common.FLOAT -> FREE_FLOAT
+%import common.INT -> FREE_INTEGER
 
 %import common.WS -> WHITESPACE
 %ignore WHITESPACE
@@ -67,6 +67,10 @@ class ExpressionLarkTransformer(Transformer):
     @v_args(inline=True)
     def flatten_opt(self, arg=None):
         return arg
+
+    @v_args(inline=True)
+    def concat(self, *args):
+        return ''.join(args)
 
     def step_expr(self, args):
         args = [arg for arg in args if arg is not None]
@@ -137,7 +141,7 @@ if __name__ == '__main__':
         ('sugar [range:2,3] thingy', 'sugar [[range:2]::3] thingy'),
         ('sugar [range:2,] thingy', 'sugar [range:2] thingy'),
         ('sugar [range:,3] thingy', 'sugar [range::3] thingy'),
-        (r'sugar [range:,abc:3] thingy', 'sugar [range:,abc:3] thingy'),
+        # (r'sugar [range:,abc:3] thingy', 'sugar [range:,abc:3] thingy'),
         ('sugar [(weight interpolation:0,12):0,1] thingy', 'sugar [[(weight interpolation:0.0):0]::1] thingy'),
         ('sugar [(weight interpolation:0,12):0,2] thingy', 'sugar [[[(weight interpolation:0.0)::1][(weight interpolation:6.0):1]:0]::2] thingy'),
         ('sugar [(weight interpolation:0,12):0,3] thingy', 'sugar [[[(weight interpolation:0.0)::1][[(weight interpolation:4.0):1]::2][(weight interpolation:8.0):2]:0]::3] thingy'),
@@ -153,7 +157,7 @@ if __name__ == '__main__':
         ['merging this AND with this']*2,
         ('$a = (prompt value:1) $a', '(prompt value:1.0)'),
         ('$a = (prompt value:1) $b = $a $b', '(prompt value:1.0)'),
-        # ['\:']*2,
+        (r'\:', ':'),
 
         # ['[top level:interpolatin:lik a pro:1,3,5: linear]']*2,
     ]):
