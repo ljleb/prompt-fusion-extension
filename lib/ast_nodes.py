@@ -63,9 +63,21 @@ class InterpolationExpression:
             control_points.append(1.)
 
         else:
-            for step in self.__steps:
+            if self.__steps[0] is not None:
+                control_points.append(0.)
+            else:
+                control_point = self.__steps[0].evaluate(steps_range, context)
+                control_points.append((control_point + 1) / total_steps)
+
+            for step in self.__steps[1:-1]:
                 control_point = step.evaluate(steps_range, context)
-                control_points.append(control_point / total_steps)
+                control_points.append((control_point + 1) / total_steps)
+
+            if self.__steps[-1] is not None:
+                control_points.append(1.)
+            else:
+                control_point = self.__steps[-1].evaluate(steps_range, context)
+                control_points.append((control_point + 1) / total_steps)
 
         return InterpolationConditioning(conditionings, control_points, self.get_curve_function())
 

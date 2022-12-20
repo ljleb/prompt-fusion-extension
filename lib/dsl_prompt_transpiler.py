@@ -1,30 +1,33 @@
 import lib.ast_nodes as ast
+import re
 from lark import lark, v_args, Transformer
 
 
 expression_grammar = r'''
-start: list_expr_opt
+start: expr* -> list_expr
 ?list_expr: expr+ -> list_expr
-?list_expr_opt: expr* -> list_expr
+?interpolation_list_expr_opt: gen_expr{interpolation_text_expr}* -> list_expr
 
-?expr: substitution_expr
-    | definition_expr
-    | weight_range_expr
-    | interpolation_expr
-    | text_expr
+?expr: gen_expr{text_expr}
 
-?weight_range_expr: "(" list_expr_opt weight_range_weight ")" -> weight_expr
-                  | "[" list_expr_opt "]" -> negative_weight_expr
+?gen_expr{default_expr}: substitution_expr
+                       | definition_expr
+                       | weight_range_expr
+                       | interpolation_expr
+                       | default_expr
+
+?weight_range_expr: "(" interpolation_list_expr_opt weight_range_weight ")" -> weight_expr
+                  | "[" interpolation_list_expr_opt "]" -> negative_weight_expr
 ?weight_range_weight: (":" (weight | range{weight}))? -> flatten_opt
 ?weight: weight_num | substitution_expr
 weight_num: WEIGHT_NUM -> float_expr
 WEIGHT_NUM: SIGN? (FLOAT | INTEGER) /\b/
 
 ?interpolation_expr: "[" interpolation_subexprs interpolation_single_step "]" -> interpolation_expr
-                 | "[" interpolation_subexprs interpolation_steps interpolation_parameter "]" -> interpolation_expr
+                   | "[" interpolation_subexprs interpolation_steps interpolation_parameter "]" -> interpolation_expr
+?interpolation_subexprs: (interpolation_list_expr_opt ":")+ -> flatten_list
 ?interpolation_single_step: step -> flatten_list
 ?interpolation_steps: step ("," step)+ -> flatten_list
-?interpolation_subexprs: (list_expr_opt ":")+ -> flatten_list
 ?step: (step_num | substitution_expr)? -> flatten_opt
 step_num: STEP_NUM -> step_expr
 STEP_NUM: SIGN? INTEGER /\b/
@@ -37,16 +40,16 @@ INTERPOLATION_FUNCTION: "linear"
 ?definition_expr: "$" SYMBOL "=" expr list_expr -> assignment_expr
 substitution_expr: "$" SYMBOL -> substitution_expr
 
-?text_expr: (TEXT | DIGIT | COMMA)+ -> text_expr
-TEXT: /[^\[\]\(\):$\s]/+
-
-COMMA: ","
+?interpolation_text_expr: INTERPOLATION_TEXT+ -> text_expr
+?text_expr: (TEXT | INTERPOLATION_TEXT)+ -> text_expr
+INTERPOLATION_TEXT: /(?!,)([^\[\]\(\):$\\\s\d]|([+\-]?(\d+\.?|\d*\.\d+))(?!(\s*,(\s*([+\-]?(\d+\.?|\d*\.\d+))|\$\w+)?)*\s*[\]:])|\\.)+/
+TEXT: /([^\[\]\(\):$\\\s]|\\.)+/
 
 range{number}: range_number{number} "," range_number{number} -> flatten_list
 range_number{number}: number? -> flatten_opt
 
 SIGN: "-" | "+"
-%import common.DIGIT
+DIGIT: /\d/
 %import common.CNAME -> SYMBOL
 %import common.FLOAT
 %import common.INT -> INTEGER
@@ -100,7 +103,8 @@ class ExpressionLarkTransformer(Transformer):
         return ast.SubstitutionExpression(*args)
 
     def text_expr(self, args):
-        return ast.LiftExpression(str(' '.join(args)))
+        backslash_pattern = re.compile(r'\\(.)')
+        return ast.LiftExpression(backslash_pattern.sub(r'\1', ' '.join(args)))
 
 
 expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=ExpressionLarkTransformer())
@@ -113,7 +117,7 @@ def transpile_prompt(prompt, steps):
 
 
 def parse_prompt(prompt):
-    expression = parse_expression(prompt.lstrip()).children[0]
+    expression = parse_expression(prompt.lstrip())
     if not hasattr(expression, 'get_interpolation_conditioning'):
         return ast.InterpolationExpression([expression], [ast.LiftExpression(0.)])
     else:
@@ -131,6 +135,9 @@ if __name__ == '__main__':
         ['legacy [[nested range::3]:2] thingy']*2,
         ['legacy [[nested range:2]::3] thingy']*2,
         ('sugar [range:2,3] thingy', 'sugar [[range:2]::3] thingy'),
+        ('sugar [range:2,] thingy', 'sugar [range:2] thingy'),
+        ('sugar [range:,3] thingy', 'sugar [range::3] thingy'),
+        (r'sugar [range:\,abc:3] thingy', 'sugar [range:,abc:3] thingy'),
         ('sugar [(weight interpolation:0,12):0,1] thingy', 'sugar [[(weight interpolation:0.0):0]::1] thingy'),
         ('sugar [(weight interpolation:0,12):0,2] thingy', 'sugar [[[(weight interpolation:0.0)::1][(weight interpolation:6.0):1]:0]::2] thingy'),
         ('sugar [(weight interpolation:0,12):0,3] thingy', 'sugar [[[(weight interpolation:0.0)::1][[(weight interpolation:4.0):1]::2][(weight interpolation:8.0):2]:0]::3] thingy'),
@@ -138,7 +145,9 @@ if __name__ == '__main__':
         ['legacy [negative weight]']*2,
         ['legacy (positive weight)']*2,
         ['[abc:1girl:2]']*2,
+        ['1girl']*2,
         ['dashes-in-text']*2,
+        ['text, separated with, comas']*2,
         ['{prompt}']*2,
         ['[abc|def ghi|jkl]']*2,
         ['merging this AND with this']*2,
@@ -149,9 +158,9 @@ if __name__ == '__main__':
         # ['[top level:interpolatin:lik a pro:1,3,5: linear]']*2,
     ]):
         try:
-            for e in parse_expression(prompt[0]).children:
-                v = e.evaluate((0, 5), None)
-                assert v == prompt[1], f"'{v}' != '{prompt[1]}'"
+            e = parse_expression(prompt[0])
+            v = e.evaluate((0, 5), None)
+            assert v == prompt[1], f"'{v}' != '{prompt[1]}'"
         except Exception as e:
             print(prompt[0])
             raise e
