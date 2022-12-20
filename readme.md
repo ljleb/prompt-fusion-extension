@@ -10,3 +10,4 @@
 
 
 ## Usage
+- Check the [wiki pages](https://github.com/ljleb/fusion/wiki) for the extension documentation.
