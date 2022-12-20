@@ -6,11 +6,11 @@ from lark import lark, v_args, Transformer
 expression_grammar = r'''
 start: expr* -> list_expr
 ?list_expr: expr+ -> list_expr
-?interpolation_list_expr_opt: gen_expr{interpolation_text_expr}* -> list_expr
+?interpolation_list_expr_opt: general_expr{interpolation_text_expr}* -> list_expr
 
-?expr: gen_expr{text_expr}
+?expr: general_expr{text_expr}
 
-?gen_expr{default_expr}: substitution_expr
+?general_expr{default_expr}: substitution_expr
                        | definition_expr
                        | weight_range_expr
                        | interpolation_expr
@@ -41,15 +41,15 @@ INTERPOLATION_FUNCTION: "linear"
 substitution_expr: "$" SYMBOL -> substitution_expr
 
 ?interpolation_text_expr: INTERPOLATION_TEXT+ -> text_expr
-?text_expr: (TEXT | INTERPOLATION_TEXT)+ -> text_expr
-INTERPOLATION_TEXT: /(?!,)([^\[\]\(\):$\\\s\d]|([+\-]?(\d+\.?|\d*\.\d+))(?!(\s*,(\s*([+\-]?(\d+\.?|\d*\.\d+))|\$\w+)?)*\s*[\]:])|\\.)+/
-TEXT: /([^\[\]\(\):$\\\s]|\\.)+/
+?text_expr: (TEXT | INTERPOLATION_TEXT | FLOAT | INTEGER)+ -> text_expr
+INTERPOLATION_TEXT: /(?!([+\-]?(\d+\.?|\d*\.\d+))?\s*(,\s*(([+\-]?(\d+\.?|\d*\.\d+)|\$[a-zA-Z_]\w*)\s*)?)*[\]:])([^\[\]\(\):$\\\s]|\\.)+/
+TEXT: /(?![+\-]?(\d+\.?|\d*\.\d+)\b)([^\[\]\(\):$,\\\s]|\\.)+/
 
 range{number}: range_number{number} "," range_number{number} -> flatten_list
 range_number{number}: number? -> flatten_opt
 
 SIGN: "-" | "+"
-DIGIT: /\d/
+%import common.DIGIT
 %import common.CNAME -> SYMBOL
 %import common.FLOAT
 %import common.INT -> INTEGER
@@ -137,7 +137,7 @@ if __name__ == '__main__':
         ('sugar [range:2,3] thingy', 'sugar [[range:2]::3] thingy'),
         ('sugar [range:2,] thingy', 'sugar [range:2] thingy'),
         ('sugar [range:,3] thingy', 'sugar [range::3] thingy'),
-        (r'sugar [range:\,abc:3] thingy', 'sugar [range:,abc:3] thingy'),
+        (r'sugar [range:,abc:3] thingy', 'sugar [range:,abc:3] thingy'),
         ('sugar [(weight interpolation:0,12):0,1] thingy', 'sugar [[(weight interpolation:0.0):0]::1] thingy'),
         ('sugar [(weight interpolation:0,12):0,2] thingy', 'sugar [[[(weight interpolation:0.0)::1][(weight interpolation:6.0):1]:0]::2] thingy'),
         ('sugar [(weight interpolation:0,12):0,3] thingy', 'sugar [[[(weight interpolation:0.0)::1][[(weight interpolation:4.0):1]::2][(weight interpolation:8.0):2]:0]::3] thingy'),
