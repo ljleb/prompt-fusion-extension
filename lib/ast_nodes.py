@@ -18,7 +18,7 @@ class ListExpression:
 
 class InterpolationExpression:
     def __init__(self, expressions, steps, function_name=None):
-        assert len(expressions) > 0
+        assert len(expressions) >= 2
         assert len(steps) == len(expressions), 'the number of steps must be the same as the number of expressions'
         self.__expressions = expressions
         self.__steps = steps
