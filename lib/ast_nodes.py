@@ -16,12 +16,12 @@ class ListExpression:
 
 
 class InterpolationExpression:
-    def __init__(self, expressions, steps, function_name='linear'):
+    def __init__(self, expressions, steps, function_name=None):
         assert len(expressions) > 0
         assert len(steps) > 0
         self.__expressions = expressions
         self.__steps = steps
-        self.__function_name = function_name
+        self.__function_name = function_name if function_name is not None else 'linear'
 
     def evaluate(self, steps_range, context):
         result = ''
@@ -67,7 +67,7 @@ class InterpolationExpression:
             control_points.append(1.)
 
         else:
-            if self.__steps[0] is not None:
+            if self.__steps[0] is None:
                 control_points.append(0.)
             else:
                 control_point = self.__steps[0].evaluate(steps_range, context)
@@ -77,7 +77,7 @@ class InterpolationExpression:
                 control_point = step.evaluate(steps_range, context)
                 control_points.append((control_point + 1) / total_steps)
 
-            if self.__steps[-1] is not None:
+            if self.__steps[-1] is None:
                 control_points.append(1.)
             else:
                 control_point = self.__steps[-1].evaluate(steps_range, context)

@@ -96,9 +96,10 @@ class ExpressionLarkTransformer(Transformer):
     def negative_weight_expr(self, args):
         return ast.WeightedExpression(*args, positive=False)
 
-    def interpolation_expr(self, args):
-        function_name = str(args[2]) if args[2:] else None
-        return ast.InterpolationExpression(args[0], args[1], function_name)
+    @v_args(inline=True)
+    def interpolation_expr(self, exprs, steps, function_name=None):
+        function_name = str(function_name) if function_name is not None else None
+        return ast.InterpolationExpression(exprs, steps, function_name)
 
     def assignment_expr(self, args):
         return ast.DeclarationExpression(*args)
