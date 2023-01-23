@@ -1,6 +1,7 @@
 ## Features
 - Prompt interpolation using a curve function
 - Complete backwards compatibility with prompt syntax from https://github.com/AUTOMATIC1111/stable-diffusion-webui
+- Weight interpolation aware of contextual prompt editing
 
 ## Installation
 1. Visit the **Extensions** tab of Automatic's WebUI.
