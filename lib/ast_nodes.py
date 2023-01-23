@@ -1,3 +1,9 @@
+from lib.interpolation_conditioning import InterpolationConditioning
+from lib.catmull import compute_catmull
+from lib.bezier import compute_on_curve_with_points as compute_bezier
+from lib.linear import compute_linear
+
+
 class ListExpression:
     def __init__(self, expressions):
         self.expressions = expressions
@@ -10,12 +16,12 @@ class ListExpression:
 
 
 class InterpolationExpression:
-    def __init__(self, expressions, steps, function_name='linear'):
+    def __init__(self, expressions, steps, function_name=None):
         assert len(expressions) > 0
         assert len(steps) > 0
         self.__expressions = expressions
         self.__steps = steps
-        self.__function_name = function_name
+        self.__function_name = function_name if function_name is not None else 'linear'
 
     def evaluate(self, steps_range, context):
         result = ''
@@ -48,8 +54,6 @@ class InterpolationExpression:
             return result
 
     def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=None):
-        from lib.interpolation_conditioning import InterpolationConditioning
-
         total_steps = steps_range[1]
 
         conditionings = []
@@ -63,17 +67,25 @@ class InterpolationExpression:
             control_points.append(1.)
 
         else:
-            for step in self.__steps:
+            if self.__steps[0] is None:
+                control_points.append(0.)
+            else:
+                control_point = self.__steps[0].evaluate(steps_range, context)
+                control_points.append((control_point + 1) / total_steps)
+
+            for step in self.__steps[1:-1]:
                 control_point = step.evaluate(steps_range, context)
-                control_points.append(control_point / total_steps)
+                control_points.append((control_point + 1) / total_steps)
+
+            if self.__steps[-1] is None:
+                control_points.append(1.)
+            else:
+                control_point = self.__steps[-1].evaluate(steps_range, context)
+                control_points.append((control_point + 1) / total_steps)
 
         return InterpolationConditioning(conditionings, control_points, self.get_curve_function())
 
     def get_curve_function(self):
-        from lib.catmull import compute_catmull
-        from lib.bezier import compute_on_curve_with_points as compute_bezier
-        from lib.linear import compute_linear
-
         return {
             'catmull': compute_catmull,
             'linear': compute_linear,
@@ -140,7 +152,13 @@ class DeclarationExpression:
     def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=None):
         updated_context = dict(context) if context is not None else {}
         updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
-        return self.expression.get_interpolation_conditioning(model, get_learned_conditioning, steps_range, updated_context)
+
+        if not hasattr(self.expression, 'get_interpolation_conditioning'):
+            expr = InterpolationExpression([self.expression], [LiftExpression(0.)])
+        else:
+            expr = self.expression
+
+        return expr.get_interpolation_conditioning(model, get_learned_conditioning, steps_range, updated_context)
 
 
 class SubstitutionExpression:

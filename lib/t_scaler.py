@@ -2,11 +2,14 @@ def apply_sampled_range(t, positions):
     distances = []
     for i in range(len(positions)-1):
         distances.append(positions[i+1] - positions[i])
+
     total_distance = sum(distances)
     for i in range(len(distances)):
         distances[i] = distances[i]/total_distance
+
     for i in range(len(distances)-1):
         distances[i+1] = distances[i] + distances[i+1]
+
     distances.insert(0, 0.0)
 
     spline_index = 0
@@ -24,4 +27,6 @@ def apply_sampled_range(t, positions):
 
 
 if __name__ == "__main__":
-    print(apply_sampled_range(0.3, [0, 10, 30]))
+    total_steps = 20
+    for i in range(total_steps):
+        print(i, apply_sampled_range(i/total_steps, [0, 9, 10, 20]))
