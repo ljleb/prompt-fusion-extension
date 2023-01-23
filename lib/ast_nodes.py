@@ -33,8 +33,9 @@ class InterpolationExpression:
             expr_database = prompt_database[:]
             expr_functions = []
 
-            expr_tensor = expr.append_to_tensor(tensor[:], expr_database, expr_functions, steps_range, context)
-            _tensor_add(expr_tensor, len(extended_prompt_database))
+            expr_tensor = tensor if type(tensor) is int else tensor[:]
+            expr_tensor = expr.append_to_tensor(expr_tensor, expr_database, expr_functions, steps_range, context)
+            expr_tensor = _tensor_add(expr_tensor, len(extended_prompt_database))
             extended_tensor.append(expr_tensor)
 
             extended_prompt_database.extend(expr_database)
@@ -72,11 +73,13 @@ class InterpolationExpression:
 
 def _tensor_add(tensor, value):
     try:
-        tensor += value
+        return tensor + value
 
-    except (ValueError, TypeError):
-        for tensor_element in tensor:
-            _tensor_add(tensor_element, value)
+    except TypeError:
+        for i, tensor_element in enumerate(tensor):
+            tensor[i] = _tensor_add(tensor_element, value)
+
+        return tensor
 
 
 class EditingExpression:

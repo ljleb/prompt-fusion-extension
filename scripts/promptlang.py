@@ -13,7 +13,7 @@ def hijacked_get_learned_conditioning(model, prompts, steps, original_function):
 
     for prompt in prompts:
         expr = parse_prompt(prompt)
-        tensor = [0]
+        tensor = 0
         prompt_database = ['']
         interpolation_functions = []
 
