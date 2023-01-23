@@ -27,16 +27,21 @@ class InterpolationExpression:
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
         extended_tensor = []
         extended_prompt_database = []
+        extended_functions = []
 
         for expr_i, expr in enumerate(self.__expressions):
             expr_database = prompt_database[:]
-            expr_tensor = expr.append_to_tensor(numpy.array(tensor), expr_database, interpolation_functions, steps_range, context)
+            expr_functions = []
+
+            expr_tensor = expr.append_to_tensor(tensor[:], expr_database, expr_functions, steps_range, context)
             _tensor_add(expr_tensor, len(extended_prompt_database))
             extended_tensor.append(expr_tensor)
+
             extended_prompt_database.extend(expr_database)
+            extended_functions.append(expr_functions)
 
         prompt_database[:] = extended_prompt_database
-        interpolation_functions.insert(0, self.get_interpolation_function(steps_range, context))
+        interpolation_functions.insert(0, (self.get_interpolation_function(steps_range, context), extended_functions))
         return extended_tensor
 
     def get_interpolation_function(self, steps_range, context):
@@ -48,7 +53,7 @@ class InterpolationExpression:
 
         mock_database = ['']
         for i, step in enumerate(steps):
-            step.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
+            step.append_to_tensor([0], mock_database, [], steps_range, context)
             step = float(mock_database[0])
             if step != int(step):
                 step = steps_range[0] + step * (steps_range[1] - steps_range[0])
@@ -82,7 +87,7 @@ class EditingExpression:
 
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
         mock_database = ['']
-        self.__step.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
+        self.__step.append_to_tensor([0], mock_database, [], steps_range, context)
         step = float(mock_database[0])
         if step == int(step):
             step = int(step)
@@ -145,10 +150,10 @@ class WeightInterpolationExpression:
         total_steps = steps_range[1] - steps_range[0]
 
         mock_database = ['']
-        self.__weight_begin.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
+        self.__weight_begin.append_to_tensor([0], mock_database, [], steps_range, context)
         weight_begin = float(mock_database[0])
         mock_database[0] = ''
-        self.__weight_end.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
+        self.__weight_end.append_to_tensor([0], mock_database, [], steps_range, context)
         weight_end = float(mock_database[0])
 
         for i in range(total_steps):
