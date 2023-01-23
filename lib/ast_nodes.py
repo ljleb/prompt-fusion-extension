@@ -16,6 +16,15 @@ class ListExpression:
         return tensor
 
 
+def tensor_add(tensor, value):
+    try:
+        tensor += value
+
+    except (ValueError, TypeError):
+        for tensor_element in tensor:
+            tensor_add(tensor_element, value)
+
+
 class InterpolationExpression:
     def __init__(self, expressions, steps, function_name=None):
         assert len(expressions) >= 2
@@ -26,21 +35,18 @@ class InterpolationExpression:
 
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
         extended_tensor = []
-        initial_database_size = len(prompt_database)
-        prompt_database *= len(self.__expressions)
+        extended_prompt_database = []
 
         for expr_i, expr in enumerate(self.__expressions):
-            begin_i = initial_database_size * expr_i
-            end_i = begin_i + initial_database_size
-            expr_database = prompt_database[begin_i:end_i]
-
+            expr_database = prompt_database[:]
             expr_tensor = expr.append_to_tensor(numpy.array(tensor), expr_database, interpolation_functions, steps_range, context)
-            expr_tensor += begin_i
-            prompt_database[begin_i:end_i] = expr_database
+            tensor_add(expr_tensor, len(extended_prompt_database))
             extended_tensor.append(expr_tensor)
+            extended_prompt_database.extend(expr_database)
 
+        prompt_database[:] = extended_prompt_database
         interpolation_functions.insert(0, self.get_interpolation_function(steps_range, context))
-        return numpy.array(extended_tensor)
+        return extended_tensor
 
     def get_interpolation_function(self, steps_range, context):
         steps = list(self.__steps)
