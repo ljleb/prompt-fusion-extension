@@ -16,15 +16,6 @@ class ListExpression:
         return tensor
 
 
-def tensor_add(tensor, value):
-    try:
-        tensor += value
-
-    except (ValueError, TypeError):
-        for tensor_element in tensor:
-            tensor_add(tensor_element, value)
-
-
 class InterpolationExpression:
     def __init__(self, expressions, steps, function_name=None):
         assert len(expressions) >= 2
@@ -40,7 +31,7 @@ class InterpolationExpression:
         for expr_i, expr in enumerate(self.__expressions):
             expr_database = prompt_database[:]
             expr_tensor = expr.append_to_tensor(numpy.array(tensor), expr_database, interpolation_functions, steps_range, context)
-            tensor_add(expr_tensor, len(extended_prompt_database))
+            _tensor_add(expr_tensor, len(extended_prompt_database))
             extended_tensor.append(expr_tensor)
             extended_prompt_database.extend(expr_database)
 
@@ -72,6 +63,15 @@ class InterpolationExpression:
         }[self.__function_name]
 
         return lambda t, embeds: interpolation_function(scale_t(t, steps), embeds)
+
+
+def _tensor_add(tensor, value):
+    try:
+        tensor += value
+
+    except (ValueError, TypeError):
+        for tensor_element in tensor:
+            _tensor_add(tensor_element, value)
 
 
 class EditingExpression:
