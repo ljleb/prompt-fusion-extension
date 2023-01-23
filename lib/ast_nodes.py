@@ -142,7 +142,7 @@ class WeightInterpolationExpression:
         self.__weight_begin.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
         weight_begin = float(mock_database[0])
         mock_database[0] = ''
-        self.__weight_begin.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
+        self.__weight_end.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
         weight_end = float(mock_database[0])
 
         for i in range(total_steps):

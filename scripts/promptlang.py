@@ -18,7 +18,9 @@ def hijacked_get_learned_conditioning(model, prompts, steps, original_function):
         interpolation_functions = []
 
         tensor = expr.append_to_tensor(tensor, prompt_database, interpolation_functions, (0, steps), dict())
-        print((tensor, prompt_database, interpolation_functions))
+        print(tensor)
+        print(prompt_database)
+        print(interpolation_functions)
         #scheduled_conditionings.append(conditioning.to_scheduled_conditionings(steps))
 
     return scheduled_conditionings
