@@ -76,10 +76,7 @@ def _tensor_add(tensor, value):
         return tensor + value
 
     except TypeError:
-        for i, tensor_element in enumerate(tensor):
-            tensor[i] = _tensor_add(tensor_element, value)
-
-        return tensor
+        return [_tensor_add(e, value) for e in tensor]
 
 
 class EditingExpression:
