@@ -99,10 +99,10 @@ class ExpressionLarkTransformer(Transformer):
     @v_args(inline=True)
     def interpolation_expr(self, exprs, steps, function_name=None):
         function_name = str(function_name) if function_name is not None else None
-        if len(exprs) == len(steps):
+        if len(steps) > 1:
             return ast.InterpolationExpression(exprs, steps, function_name)
         else:
-            assert function_name is None and len(steps) == 1, 'bad prompt editing syntax'
+            assert function_name is None, 'bad prompt editing syntax'
             return ast.EditingExpression(exprs, steps[0])
 
     def assignment_expr(self, args):

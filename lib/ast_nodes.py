@@ -91,7 +91,7 @@ class EditingExpression:
                 prompt_database[i] += ':'
 
         for i in range(len(prompt_database)):
-            prompt_database[i] += f'{step}]'
+            prompt_database[i] += f'{step - 1}]'
 
         return tensor
 
