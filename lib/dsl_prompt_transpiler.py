@@ -99,7 +99,11 @@ class ExpressionLarkTransformer(Transformer):
     @v_args(inline=True)
     def interpolation_expr(self, exprs, steps, function_name=None):
         function_name = str(function_name) if function_name is not None else None
-        return ast.InterpolationExpression(exprs, steps, function_name)
+        if len(exprs) == len(steps):
+            return ast.InterpolationExpression(exprs, steps, function_name)
+        else:
+            assert function_name is None and len(steps) == 1, 'bad prompt editing syntax'
+            return ast.EditingExpression(exprs, steps[0])
 
     def assignment_expr(self, args):
         return ast.DeclarationExpression(*args)
@@ -109,24 +113,15 @@ class ExpressionLarkTransformer(Transformer):
 
     def text_expr(self, args):
         backslash_pattern = re.compile(r'\\(.)')
-        return ast.LiftExpression(backslash_pattern.sub(r'\1', ' '.join(args)))
+        return ast.LiftExpression(backslash_pattern.sub(r'\1', ' '.join(args)) + ' ')
 
 
 expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=ExpressionLarkTransformer())
 parse_expression = expr_parser.parse
 
 
-def transpile_prompt(prompt, steps):
-    expression = parse_prompt(prompt)
-    return expression.evaluate((0, steps), None)
-
-
 def parse_prompt(prompt):
-    expression = parse_expression(prompt.lstrip())
-    if not hasattr(expression, 'get_interpolation_conditioning'):
-        return ast.InterpolationExpression([expression], [ast.LiftExpression(0.)])
-    else:
-        return expression
+    return parse_expression(prompt.lstrip())
 
 
 if __name__ == '__main__':

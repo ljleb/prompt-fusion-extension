@@ -1,4 +1,4 @@
-def apply_sampled_range(t, positions):
+def scale_t(t, positions):
     distances = []
     for i in range(len(positions)-1):
         distances.append(positions[i+1] - positions[i])

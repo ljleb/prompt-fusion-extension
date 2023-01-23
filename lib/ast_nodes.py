@@ -1,178 +1,189 @@
-from lib.interpolation_conditioning import InterpolationConditioning
 from lib.catmull import compute_catmull
 from lib.bezier import compute_on_curve_with_points as compute_bezier
 from lib.linear import compute_linear
+from lib.t_scaler import scale_t
+import numpy
 
 
 class ListExpression:
     def __init__(self, expressions):
-        self.expressions = expressions
+        self.__expressions = expressions
 
-    def evaluate(self, steps_range, context):
-        expressions = filter(
-            lambda e: e,
-            [expression.evaluate(steps_range, context) for expression in self.expressions])
-        return ' '.join(expressions)
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+        for expression in self.__expressions:
+            tensor = expression.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
+
+        return tensor
 
 
 class InterpolationExpression:
     def __init__(self, expressions, steps, function_name=None):
         assert len(expressions) > 0
-        assert len(steps) > 0
+        assert len(steps) == len(expressions), 'the number of steps must be the same as the number of expressions'
         self.__expressions = expressions
         self.__steps = steps
         self.__function_name = function_name if function_name is not None else 'linear'
 
-    def evaluate(self, steps_range, context):
-        result = ''
-        if len(self.__steps) == 1:
-            if len(self.__expressions) > 2:
-                raise ValueError('more than 2 control points in instantaneous interpolation')
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+        extended_tensor = []
+        initial_database_size = len(prompt_database)
+        prompt_database *= len(self.__expressions)
 
-            for expression in self.__expressions:
-                result += f'{expression.evaluate(steps_range, context)}:'
+        for expr_i, expr in enumerate(self.__expressions):
+            begin_i = initial_database_size * expr_i
+            end_i = begin_i + initial_database_size
+            expr_database = prompt_database[begin_i:end_i]
 
-            return f'[{result}{self.__steps[0].evaluate(steps_range, context) - 1}]'
+            expr_tensor = expr.append_to_tensor(numpy.array(tensor), expr_database, interpolation_functions, steps_range, context)
+            expr_tensor += begin_i
+            prompt_database[begin_i:end_i] = expr_database
+            extended_tensor.append(expr_tensor)
 
-        elif len(self.__steps) > 1:
-            if len(self.__expressions) > 1:
-                raise ValueError('interpolation subexpressions using multiple control points are not supported yet')
+        interpolation_functions.insert(0, self.get_interpolation_function(steps_range, context))
+        return numpy.array(extended_tensor)
 
-            begin = self.__steps[0].evaluate(steps_range, context) if self.__steps[0] is not None else steps_range[0]
-            end = self.__steps[1].evaluate(steps_range, context) if self.__steps[1] is not None else steps_range[1]
-            new_steps_range = (max(begin, steps_range[0]), min(end, steps_range[1]))
-            if new_steps_range[0] >= new_steps_range[1]:
-                return ''
+    def get_interpolation_function(self, steps_range, context):
+        steps = list(self.__steps)
+        if steps[0] is None:
+            steps[0] = LiftExpression(steps_range[0])
+        if steps[-1] is None:
+            steps[-1] = LiftExpression(steps_range[1])
 
-            result = self.__expressions[0].evaluate(new_steps_range, context)
-            if begin > steps_range[0]:
-                result = f'[{result}:{new_steps_range[0] - 1}]'
+        mock_database = ['']
+        for i, step in enumerate(steps):
+            step.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
+            step = float(mock_database[0])
+            if step != int(step):
+                step = steps_range[0] + step * (steps_range[1] - steps_range[0])
 
-            if end < steps_range[1]:
-                result = f'[{result}::{new_steps_range[1] - 1}]'
+            steps[i] = int(step)
+            mock_database[0] = ''
 
-            return result
-
-    def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=None):
-        total_steps = steps_range[1]
-
-        conditionings = []
-        for expression in self.__expressions:
-            prompt = expression.evaluate(steps_range, context)
-            conditionings.append(get_learned_conditioning(model, [prompt], total_steps)[0][0].cond)
-
-        control_points = []
-        if len(self.__steps) < 2:
-            control_points.append(0.)
-            control_points.append(1.)
-
-        else:
-            if self.__steps[0] is None:
-                control_points.append(0.)
-            else:
-                control_point = self.__steps[0].evaluate(steps_range, context)
-                control_points.append((control_point + 1) / total_steps)
-
-            for step in self.__steps[1:-1]:
-                control_point = step.evaluate(steps_range, context)
-                control_points.append((control_point + 1) / total_steps)
-
-            if self.__steps[-1] is None:
-                control_points.append(1.)
-            else:
-                control_point = self.__steps[-1].evaluate(steps_range, context)
-                control_points.append((control_point + 1) / total_steps)
-
-        return InterpolationConditioning(conditionings, control_points, self.get_curve_function())
-
-    def get_curve_function(self):
-        return {
+        interpolation_function = {
             'catmull': compute_catmull,
             'linear': compute_linear,
             'bezier': compute_bezier,
         }[self.__function_name]
 
+        return lambda t, embeds: interpolation_function(scale_t(t, steps), embeds)
+
+
+class EditingExpression:
+    def __init__(self, expressions, step):
+        assert 1 <= len(expressions) <= 2
+        self.__expressions = expressions
+        self.__step = step
+
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+        mock_database = ['']
+        self.__step.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
+        step = float(mock_database[0])
+        if step == int(step):
+            step = int(step)
+
+        for i in range(len(prompt_database)):
+            prompt_database[i] += '['
+
+        for expr_index, expr in enumerate(self.__expressions):
+            expr_steps_range = (steps_range[0], step) if expr_index == 0 else (step, steps_range[1])
+            tensor = expr.append_to_tensor(tensor, prompt_database, interpolation_functions, expr_steps_range, context)
+            for i in range(len(prompt_database)):
+                prompt_database[i] += ':'
+
+        for i in range(len(prompt_database)):
+            prompt_database[i] += f'{step}]'
+
+        return tensor
+
 
 class WeightedExpression:
     def __init__(self, nested, weight=None, positive=True):
-        self.nested = nested
+        self.__nested = nested
         if not positive:
             assert weight is None
-        self.weight = weight
-        self.positive = positive
+        self.__weight = weight
+        self.__positive = positive
 
-    def evaluate(self, steps_range, context):
-        result = self.nested.evaluate(steps_range, context)
-
-        if self.positive:
-            if self.weight is not None:
-                result = f'{result}:{self.weight.evaluate(steps_range, context)}'
-            return f'({result})'
-
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+        if self.__positive:
+            open_bracket = '('
+            close_bracket = ')'
         else:
-            return f'[{result}]'
+            open_bracket = '['
+            close_bracket = ']'
+
+        for i in range(len(prompt_database)):
+            prompt_database[i] += open_bracket
+
+        tensor = self.__nested.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
+
+        if self.__weight is not None:
+            for i in range(len(prompt_database)):
+                prompt_database[i] += ':'
+
+            self.__weight.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
+
+        for i in range(len(prompt_database)):
+            prompt_database[i] += close_bracket
+
+        return tensor
 
 
 class WeightInterpolationExpression:
     def __init__(self, nested, weight_begin, weight_end):
-        self.nested = nested
-        self.weight_begin = weight_begin
-        self.weight_end = weight_end
+        self.__nested = nested
+        self.__weight_begin = weight_begin if weight_begin is not None else LiftExpression(1.)
+        self.__weight_end = weight_end if weight_end is not None else LiftExpression(1.)
 
-    def evaluate(self, steps_range, context):
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
         total_steps = steps_range[1] - steps_range[0]
-        result = ''
-        weight_begin = self.weight_begin.evaluate(steps_range, context) if self.weight_begin is not None else 1
-        weight_end = self.weight_end.evaluate(steps_range, context) if self.weight_end is not None else 1
+
+        mock_database = ['']
+        self.__weight_begin.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
+        weight_begin = float(mock_database[0])
+        mock_database[0] = ''
+        self.__weight_begin.append_to_tensor(numpy.array([0]), mock_database, [], steps_range, context)
+        weight_end = float(mock_database[0])
 
         for i in range(total_steps):
             step = i + steps_range[0]
-            inner_text = self.nested.evaluate((step, step + 1), context)
-            if not inner_text: continue
 
             weight = weight_begin + (weight_end - weight_begin) * (i / total_steps)
-            equivalent_expr = WeightedExpression(LiftExpression(inner_text), LiftExpression(weight))
-            equivalent_expr = InterpolationExpression([equivalent_expr], [LiftExpression(step), LiftExpression(step + 1)])
-            result += equivalent_expr.evaluate(steps_range, context)
+            weight_step_expr = WeightedExpression(self.__nested, LiftExpression(weight))
+            weight_step_expr = EditingExpression([weight_step_expr], LiftExpression(step))
+            weight_step_expr = EditingExpression([weight_step_expr, ListExpression([])], LiftExpression(step + 1))
 
-        return result
+            tensor = weight_step_expr.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
+
+        return tensor
 
 
 class DeclarationExpression:
     def __init__(self, symbol, nested, expression):
-        self.symbol = symbol
-        self.nested = nested
-        self.expression = expression
+        self.__symbol = symbol
+        self.__nested = nested
+        self.__expression = expression
 
-    def evaluate(self, steps_range, context):
-        updated_context = dict(context) if context is not None else {}
-        updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
-        return self.expression.evaluate(steps_range, updated_context)
-
-    def get_interpolation_conditioning(self, model, get_learned_conditioning, steps_range, context=None):
-        updated_context = dict(context) if context is not None else {}
-        updated_context[self.symbol] = self.nested.evaluate(steps_range, context)
-
-        if not hasattr(self.expression, 'get_interpolation_conditioning'):
-            expr = InterpolationExpression([self.expression], [LiftExpression(0.)])
-        else:
-            expr = self.expression
-
-        return expr.get_interpolation_conditioning(model, get_learned_conditioning, steps_range, updated_context)
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+        updated_context = dict(context)
+        updated_context[self.__symbol] = self.__nested
+        return self.__expression.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, updated_context)
 
 
 class SubstitutionExpression:
     def __init__(self, symbol):
-        self.symbol = symbol
+        self.__symbol = symbol
 
-    def evaluate(self, steps_range, context):
-        context = context if context is not None else {}
-        return context[self.symbol]
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+        return context[self.__symbol].append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
 
 
 class LiftExpression:
     def __init__(self, text):
         self.text = text
 
-    def evaluate(self, steps_range, context):
-        return self.text
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+        for i in range(len(prompt_database)):
+            prompt_database[i] += str(self.text)
+
+        return tensor

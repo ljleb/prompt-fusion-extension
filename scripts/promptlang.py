@@ -5,7 +5,7 @@ sys.path.append(base_dir)
 
 from lib.dsl_prompt_transpiler import parse_prompt
 from lib.hijacker import prompt_parser_hijacker
-
+import numpy
 
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
 def hijacked_get_learned_conditioning(model, prompts, steps, original_function):
@@ -13,8 +13,13 @@ def hijacked_get_learned_conditioning(model, prompts, steps, original_function):
 
     for prompt in prompts:
         expr = parse_prompt(prompt)
-        conditioning = expr.get_interpolation_conditioning(model, original_function, (0, steps))
-        scheduled_conditionings.append(conditioning.to_scheduled_conditionings(steps))
+        tensor = numpy.array(0)
+        prompt_database = ['']
+        interpolation_functions = []
+
+        tensor = expr.append_to_tensor(tensor, prompt_database, interpolation_functions, (0, steps), dict())
+        print((tensor, prompt_database, interpolation_functions))
+        #scheduled_conditionings.append(conditioning.to_scheduled_conditionings(steps))
 
     return scheduled_conditionings
 
