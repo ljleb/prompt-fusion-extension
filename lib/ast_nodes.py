@@ -31,12 +31,12 @@ class InterpolationExpression:
         for expr_i, expr in enumerate(self.__expressions):
             expr_database = prompt_database[:]
             expr_functions = []
-
             expr_tensor = tensor if type(tensor) is int else tensor[:]
+
             expr_tensor = expr.append_to_tensor(expr_tensor, expr_database, expr_functions, steps_range, total_steps, context)
             expr_tensor = _tensor_add(expr_tensor, len(extended_prompt_database))
-            extended_tensor.append(expr_tensor)
 
+            extended_tensor.append(expr_tensor)
             extended_prompt_database.extend(expr_database)
             extended_functions.append(expr_functions)
 
@@ -51,15 +51,12 @@ class InterpolationExpression:
         if steps[-1] is None:
             steps[-1] = LiftExpression(steps_range[1])
 
-        mock_database = ['']
         for i, step in enumerate(steps):
-            step.append_to_tensor([0], mock_database, [], steps_range, total_steps, context)
-            step = float(mock_database[0])
+            step = _eval_float(step, steps_range, total_steps, context)
             if 0 < step < 1:
                 step = steps_range[0] + step * (steps_range[1] - steps_range[0])
 
             steps[i] = int(step)
-            mock_database[0] = ''
 
         interpolation_function = {
             'catmull': compute_catmull,
@@ -90,9 +87,7 @@ class EditingExpression:
         self.__step = step
 
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
-        mock_database = ['']
-        self.__step.append_to_tensor([0], mock_database, [], steps_range, total_steps, context)
-        step = float(mock_database[0])
+        step = _eval_float(self.__step, steps_range, total_steps, context)
         if step == int(step):
             step = int(step)
 
@@ -153,12 +148,8 @@ class WeightInterpolationExpression:
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         steps_range_size = steps_range[1] - steps_range[0]
 
-        mock_database = ['']
-        self.__weight_begin.append_to_tensor([0], mock_database, [], steps_range, total_steps, context)
-        weight_begin = float(mock_database[0])
-        mock_database[0] = ''
-        self.__weight_end.append_to_tensor([0], mock_database, [], steps_range, total_steps, context)
-        weight_end = float(mock_database[0])
+        weight_begin = _eval_float(self.__weight_begin, steps_range, total_steps, context)
+        weight_end = _eval_float(self.__weight_end, steps_range, total_steps, context)
 
         for i in range(steps_range_size):
             step = i + steps_range[0]
@@ -202,3 +193,9 @@ class LiftExpression:
             prompt_database[i] += str(self.text)
 
         return tensor
+
+
+def _eval_float(expression, steps_range, total_steps, context):
+    mock_database = ['']
+    expression.append_to_tensor([0], mock_database, [], steps_range, total_steps, context)
+    return float(mock_database[0])
