@@ -41,10 +41,7 @@ def hijacked_get_learned_conditioning(model, prompts, steps, original_function):
             scheduled_conditionings.append(original_function(model, [prompt], steps)[0])
             continue
 
-        embed_database = []
-        for tensor_prompt in prompt_database:
-            embed_database.append(original_function(model, [tensor_prompt], steps)[0][0].cond)
-
+        embed_database = [embed[0].cond for embed in original_function(model, prompt_database, steps)]
         embed_tensor = _resolve_embeds(tensor, embed_database)
         interpolated_conditionings = []
 
