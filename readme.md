@@ -1,4 +1,4 @@
-## Fusion
+# Fusion
 
 Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Developing-extensions) that adds more possibilities to the native prompt syntax. Among other additions, it enables to interpolate between different the embeddings of different prompts continuously:
 
