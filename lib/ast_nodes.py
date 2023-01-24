@@ -35,6 +35,8 @@ class InterpolationExpression:
 
             expr_tensor = tensor if type(tensor) is int else tensor[:]
             expr_tensor = expr.append_to_tensor(expr_tensor, expr_database, expr_functions, steps_range, context)
+            assert len(expr_functions) == 0, 'nested interpolations are not yet supported'
+
             expr_tensor = _tensor_add(expr_tensor, len(extended_prompt_database))
             extended_tensor.append(expr_tensor)
 
@@ -43,7 +45,7 @@ class InterpolationExpression:
                 extended_functions.append(expr_functions)
 
         prompt_database[:] = extended_prompt_database
-        interpolation_functions.insert(0, (self.get_interpolation_function(steps_range, context), extended_functions))
+        interpolation_functions.append((self.get_interpolation_function(steps_range, context), extended_functions))
         return extended_tensor
 
     def get_interpolation_function(self, steps_range, context):
