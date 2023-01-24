@@ -10,29 +10,6 @@ from modules.prompt_parser import ScheduledPromptConditioning
 import torch
 
 
-def _resolve_embeds(tensor, conditionings):
-    if type(tensor) is int:
-        return conditionings[tensor]
-    else:
-        return [_resolve_embeds(e, conditionings) for e in tensor]
-
-
-def _interpolate_tensor(t, interpolation_functions, conditioning_tensor, tensor_axes):
-    if tensor_axes == 0:
-        return conditioning_tensor
-
-    interpolation_function, nested_functions = interpolation_functions[0]
-    control_points = list(conditioning_tensor)
-    if tensor_axes > 1:
-        control_points = [_interpolate_tensor(t, interpolation_functions[1:], sub_tensor, tensor_axes - 1) for sub_tensor in conditioning_tensor]
-
-    for i, nested_interpolation_functions in enumerate(nested_functions):
-        if nested_interpolation_functions:
-            control_points[i] = _interpolate_tensor(t, nested_interpolation_functions, control_points[i], len(nested_interpolation_functions))
-
-    return interpolation_function(t, control_points)
-
-
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
 def hijacked_get_learned_conditioning(model, prompts, total_steps, original_function):
     flattened_prompts, prompts_interpolation_info = parse_interpolation_info(prompts, total_steps)
@@ -77,6 +54,29 @@ def schedule_conditionings(flattened_conditionings, prompts_interpolation_info, 
         scheduled_conditionings.append(interpolated_conditionings)
 
     return scheduled_conditionings
+
+
+def _resolve_embeds(tensor, conditionings):
+    if type(tensor) is int:
+        return conditionings[tensor]
+    else:
+        return [_resolve_embeds(e, conditionings) for e in tensor]
+
+
+def _interpolate_tensor(t, interpolation_functions, conditioning_tensor, tensor_axes):
+    if tensor_axes == 0:
+        return conditioning_tensor
+
+    interpolation_function, nested_functions = interpolation_functions[0]
+    control_points = list(conditioning_tensor)
+    if tensor_axes > 1:
+        control_points = [_interpolate_tensor(t, interpolation_functions[1:], sub_tensor, tensor_axes - 1) for sub_tensor in conditioning_tensor]
+
+    for i, nested_interpolation_functions in enumerate(nested_functions):
+        if nested_interpolation_functions:
+            control_points[i] = _interpolate_tensor(t, nested_interpolation_functions, control_points[i], len(nested_interpolation_functions))
+
+    return interpolation_function(t, control_points)
 
 
 class FusionScript(scripts.Script):
