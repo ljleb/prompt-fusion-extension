@@ -57,7 +57,7 @@ class InterpolationExpression:
 
         mock_database = ['']
         for i, step in enumerate(steps):
-            step.append_to_tensor([0], mock_database, [], steps_range, context)
+            step.append_to_tensor([0], mock_database, [], steps_range, total_steps, context)
             step = float(mock_database[0])
             if 0 < step < 1:
                 step = steps_range[0] + step * (steps_range[1] - steps_range[0])
@@ -72,16 +72,14 @@ class InterpolationExpression:
         }[self.__function_name]
 
         def part_scale_t(t):
-            assert steps[-1] <= steps_range[1]
-            assert steps[0] >= steps_range[0]
-
-            mapped_t = steps_range[0] + t * (steps_range[-1] - steps_range[0])
-            if t <= steps[0]:
+            mapped_t = t * total_steps
+            if mapped_t <= steps[0]:
                 return 0.
-            if t >= steps[-1]:
+            if mapped_t >= steps[-1]:
                 return 1.
 
-            return scale_t(mapped_t / total_steps, steps)
+            mapped_t = (mapped_t - steps[0]) / (steps[-1] - steps[0])
+            return scale_t(mapped_t, steps)
 
         return lambda t, embeds: interpolation_function(part_scale_t(t), embeds)
 
