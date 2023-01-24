@@ -65,6 +65,9 @@ def _resolve_conditionings(tensor, conditionings):
 def _interpolate_tensor(tensor, interpolation_functions, t, step):
     tensor_axes = len(interpolation_functions)
     if tensor_axes == 0:
+        if type(tensor) is torch.Tensor:
+            return tensor
+
         for schedule in tensor:
             if schedule.end_at_step >= step:
                 return schedule.cond

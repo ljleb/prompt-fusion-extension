@@ -41,7 +41,7 @@ class InterpolationExpression:
             extended_functions.append(expr_functions)
 
         prompt_database[:] = extended_prompt_database
-        interpolation_functions.append((self.get_interpolation_function(steps_range, total_steps, context), extended_functions))
+        interpolation_functions.insert(0, (self.get_interpolation_function(steps_range, total_steps, context), extended_functions))
         return extended_tensor
 
     def get_interpolation_function(self, steps_range, total_steps, context):
