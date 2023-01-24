@@ -44,7 +44,7 @@ def schedule_conditionings(flattened_conditionings, prompts_interpolation_info, 
 
         interpolated_conditionings = []
         for step in range(steps):
-            interpolated_conditioning = _interpolate_tensor(conditionings_tensor, interpolation_functions, step / max(steps - 1, 1), step)
+            interpolated_conditioning = _interpolate_tensor(conditionings_tensor, interpolation_functions, step / steps, step)
             if len(interpolated_conditionings) > 0 and torch.all(torch.eq(interpolated_conditionings[-1].cond, interpolated_conditioning)):
                 interpolated_conditionings[-1] = ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditionings[-1].cond)
             else:

@@ -35,4 +35,4 @@ def scale_t(t, positions):
 if __name__ == "__main__":
     total_steps = 20
     for i in range(total_steps):
-        print(i, apply_sampled_range(i/total_steps, [0, 9, 10, 20]))
+        print(i, scale_t(i/total_steps, [9, 10]))
