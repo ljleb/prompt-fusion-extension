@@ -7,7 +7,7 @@ Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/stable-
 [night light:magical forest:5,15]
 
 # catmull-rom curve prompt interpolation
-[night light:magical forest:5,15:catmull]
+[night light:magical forest:norvegian territory:5,15,25:catmull]
 
 # linear weight interpolation
 (fire extinguisher:1.0,2.0)
