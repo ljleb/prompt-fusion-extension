@@ -7,6 +7,7 @@ from lib.dsl_prompt_transpiler import parse_prompt
 from lib.hijacker import prompt_parser_hijacker
 from modules.prompt_parser import ScheduledPromptConditioning
 
+import torch
 
 def _resolve_embeds(tensor, embeds):
     if type(tensor) is int:
@@ -16,10 +17,11 @@ def _resolve_embeds(tensor, embeds):
 
 
 def _interpolate_tensor(t, interpolation_functions, embed_tensor, tensor_axes):
-    if tensor_axes > 1:
-        return interpolation_functions[0][0](t, [_interpolate_tensor(t, interpolation_functions[1:], e, tensor_axes - 1) for e in embed_tensor])
+    if tensor_axes <= 1:
+        return interpolation_functions[0][0](t, embed_tensor)
 
-    return interpolation_functions[0][0](t, embed_tensor)
+    control_points = [_interpolate_tensor(t, interpolation_functions[1:], e, tensor_axes - 1) for e in embed_tensor]
+    return interpolation_functions[0][0](t, control_points)
 
 
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
@@ -37,17 +39,23 @@ def hijacked_get_learned_conditioning(model, prompts, steps, original_function):
         tensor_axes = len(interpolation_functions)
         if tensor_axes == 0:
             scheduled_conditionings.append(original_function(model, [prompt], steps)[0])
-        else:
-            embed_database = []
-            for tensor_prompt in prompt_database:
-                embed_database.append(original_function(model, [tensor_prompt], steps)[0][0].cond)
+            continue
 
-            embed_tensor = _resolve_embeds(tensor, embed_database)
-            interpolated_conditionings = []
-            for step in range(steps):
-                interpolated_conditioning = _interpolate_tensor(step / steps, interpolation_functions, embed_tensor, tensor_axes)
+        embed_database = []
+        for tensor_prompt in prompt_database:
+            embed_database.append(original_function(model, [tensor_prompt], steps)[0][0].cond)
+
+        embed_tensor = _resolve_embeds(tensor, embed_database)
+        interpolated_conditionings = []
+
+        for step in range(steps):
+            interpolated_conditioning = _interpolate_tensor(step / max(steps - 1, 1), interpolation_functions, embed_tensor, tensor_axes)
+            if len(interpolated_conditionings) > 0 and torch.all(torch.eq(interpolated_conditionings[-1].cond, interpolated_conditioning)):
+                interpolated_conditionings[-1] = ScheduledPromptConditioning(step, interpolated_conditionings[-1].cond)
+            else:
                 interpolated_conditionings.append(ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditioning))
-            scheduled_conditionings.append(interpolated_conditionings)
+
+        scheduled_conditionings.append(interpolated_conditionings)
 
     return scheduled_conditionings
 
