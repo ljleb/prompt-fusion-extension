@@ -97,7 +97,7 @@ class EditingExpression:
 
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         mock_database = ['']
-        self.__step.append_to_tensor([0], mock_database, [], steps_range, context)
+        self.__step.append_to_tensor([0], mock_database, [], steps_range, total_steps, context)
         step = float(mock_database[0])
         if step == int(step):
             step = int(step)

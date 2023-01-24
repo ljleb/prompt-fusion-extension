@@ -37,14 +37,14 @@ def parse_interpolation_info(prompts, total_steps):
 
 def schedule_conditionings(flattened_conditionings, prompts_interpolation_info, steps):
     scheduled_conditionings = []
-    for embeds_start_index, embeds_database_size, embed_interpolation_info in prompts_interpolation_info:
-        indices_tensor, interpolation_functions = embed_interpolation_info
-        conditioning_database = [embed[0].cond for embed in flattened_conditionings[embeds_start_index:embeds_start_index + embeds_database_size]]
-        tensor = _resolve_conditionings(indices_tensor, conditioning_database)
+    for conditionings_begin, conditionings_size, interpolation_tensor in prompts_interpolation_info:
+        indices_tensor, interpolation_functions = interpolation_tensor
+        conditioning_database = flattened_conditionings[conditionings_begin:conditionings_begin + conditionings_size]
+        conditionings_tensor = _resolve_conditionings(indices_tensor, conditioning_database)
 
         interpolated_conditionings = []
         for step in range(steps):
-            interpolated_conditioning = _interpolate_tensor(tensor, interpolation_functions, step / max(steps - 1, 1))
+            interpolated_conditioning = _interpolate_tensor(conditionings_tensor, interpolation_functions, step / max(steps - 1, 1), step)
             if len(interpolated_conditionings) > 0 and torch.all(torch.eq(interpolated_conditionings[-1].cond, interpolated_conditioning)):
                 interpolated_conditionings[-1] = ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditionings[-1].cond)
             else:
@@ -62,20 +62,21 @@ def _resolve_conditionings(tensor, conditionings):
         return [_resolve_conditionings(e, conditionings) for e in tensor]
 
 
-def _interpolate_tensor(tensor, interpolation_functions, t):
+def _interpolate_tensor(tensor, interpolation_functions, t, step):
     tensor_axes = len(interpolation_functions)
     if tensor_axes == 0:
-        return tensor
+        for schedule in tensor:
+            if schedule.end_at_step >= step:
+                return schedule.cond
 
     interpolation_function, control_points_functions = interpolation_functions[0]
     if tensor_axes == 1:
         control_points = list(tensor)
     else:
-        control_points = [_interpolate_tensor(sub_tensor, interpolation_functions[1:], t) for sub_tensor in tensor]
+        control_points = [_interpolate_tensor(sub_tensor, interpolation_functions[1:], t, step) for sub_tensor in tensor]
 
     for i, nested_functions in enumerate(control_points_functions):
-        if nested_functions:
-            control_points[i] = _interpolate_tensor(control_points[i], nested_functions, t)
+        control_points[i] = _interpolate_tensor(control_points[i], nested_functions, t, step)
 
     return interpolation_function(t, control_points)
 
