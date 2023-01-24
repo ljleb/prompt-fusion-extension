@@ -67,11 +67,12 @@ class InterpolationExpression:
             'bezier': compute_bezier,
         }[self.__function_name]
 
-        def steps_scale_t(t):
-            mapped_t = (t * total_steps - steps[0]) / (steps[-1] - steps[0])
-            return scale_t(mapped_t, steps)
+        def steps_scale_t(t, conditionings):
+            scaled_t = (t * total_steps - steps[0]) / (steps[-1] - steps[0])
+            scaled_t = scale_t(scaled_t, steps)
+            return interpolation_function(scaled_t, conditionings)
 
-        return lambda t, embeds: interpolation_function(steps_scale_t(t), embeds)
+        return steps_scale_t
 
 
 def _tensor_add(tensor, value):
