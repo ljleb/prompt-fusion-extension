@@ -9,9 +9,9 @@ class ListExpression:
     def __init__(self, expressions):
         self.__expressions = expressions
 
-    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         for expression in self.__expressions:
-            tensor = expression.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
+            tensor = expression.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, context)
 
         return tensor
 
@@ -24,7 +24,7 @@ class InterpolationExpression:
         self.__steps = steps
         self.__function_name = function_name if function_name is not None else 'linear'
 
-    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         extended_tensor = []
         extended_prompt_database = []
         extended_functions = []
@@ -34,7 +34,7 @@ class InterpolationExpression:
             expr_functions = []
 
             expr_tensor = tensor if type(tensor) is int else tensor[:]
-            expr_tensor = expr.append_to_tensor(expr_tensor, expr_database, expr_functions, steps_range, context)
+            expr_tensor = expr.append_to_tensor(expr_tensor, expr_database, expr_functions, steps_range, total_steps, context)
             assert len(expr_functions) == 0, 'nested interpolations are not yet supported'
 
             expr_tensor = _tensor_add(expr_tensor, len(extended_prompt_database))
@@ -45,10 +45,10 @@ class InterpolationExpression:
                 extended_functions.append(expr_functions)
 
         prompt_database[:] = extended_prompt_database
-        interpolation_functions.append((self.get_interpolation_function(steps_range, context), extended_functions))
+        interpolation_functions.append((self.get_interpolation_function(steps_range, total_steps, context), extended_functions))
         return extended_tensor
 
-    def get_interpolation_function(self, steps_range, context):
+    def get_interpolation_function(self, steps_range, total_steps, context):
         steps = list(self.__steps)
         if steps[0] is None:
             steps[0] = LiftExpression(steps_range[0])
@@ -59,7 +59,7 @@ class InterpolationExpression:
         for i, step in enumerate(steps):
             step.append_to_tensor([0], mock_database, [], steps_range, context)
             step = float(mock_database[0])
-            if step != int(step):
+            if 0 < step < 1:
                 step = steps_range[0] + step * (steps_range[1] - steps_range[0])
 
             steps[i] = int(step)
@@ -71,7 +71,19 @@ class InterpolationExpression:
             'bezier': compute_bezier,
         }[self.__function_name]
 
-        return lambda t, embeds: interpolation_function(scale_t(t, steps), embeds)
+        def part_scale_t(t):
+            assert steps[-1] <= steps_range[1]
+            assert steps[0] >= steps_range[0]
+
+            mapped_t = steps_range[0] + t * (steps_range[-1] - steps_range[0])
+            if t <= steps[0]:
+                return 0.
+            if t >= steps[-1]:
+                return 1.
+
+            return scale_t(mapped_t / total_steps, steps)
+
+        return lambda t, embeds: interpolation_function(part_scale_t(t), embeds)
 
 
 def _tensor_add(tensor, value):
@@ -88,7 +100,7 @@ class EditingExpression:
         self.__expressions = expressions
         self.__step = step
 
-    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         mock_database = ['']
         self.__step.append_to_tensor([0], mock_database, [], steps_range, context)
         step = float(mock_database[0])
@@ -100,7 +112,7 @@ class EditingExpression:
 
         for expr_index, expr in enumerate(self.__expressions):
             expr_steps_range = (steps_range[0], step) if expr_index == 0 else (step, steps_range[1])
-            tensor = expr.append_to_tensor(tensor, prompt_database, interpolation_functions, expr_steps_range, context)
+            tensor = expr.append_to_tensor(tensor, prompt_database, interpolation_functions, expr_steps_range, total_steps, context)
             for i in range(len(prompt_database)):
                 prompt_database[i] += ':'
 
@@ -118,7 +130,7 @@ class WeightedExpression:
         self.__weight = weight
         self.__positive = positive
 
-    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         if self.__positive:
             open_bracket = '('
             close_bracket = ')'
@@ -129,13 +141,13 @@ class WeightedExpression:
         for i in range(len(prompt_database)):
             prompt_database[i] += open_bracket
 
-        tensor = self.__nested.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
+        tensor = self.__nested.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, context)
 
         if self.__weight is not None:
             for i in range(len(prompt_database)):
                 prompt_database[i] += ':'
 
-            self.__weight.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
+            self.__weight.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, context)
 
         for i in range(len(prompt_database)):
             prompt_database[i] += close_bracket
@@ -149,25 +161,25 @@ class WeightInterpolationExpression:
         self.__weight_begin = weight_begin if weight_begin is not None else LiftExpression(1.)
         self.__weight_end = weight_end if weight_end is not None else LiftExpression(1.)
 
-    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
-        total_steps = steps_range[1] - steps_range[0]
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
+        steps_range_size = steps_range[1] - steps_range[0]
 
         mock_database = ['']
-        self.__weight_begin.append_to_tensor([0], mock_database, [], steps_range, context)
+        self.__weight_begin.append_to_tensor([0], mock_database, [], steps_range, total_steps, context)
         weight_begin = float(mock_database[0])
         mock_database[0] = ''
-        self.__weight_end.append_to_tensor([0], mock_database, [], steps_range, context)
+        self.__weight_end.append_to_tensor([0], mock_database, [], steps_range, total_steps, context)
         weight_end = float(mock_database[0])
 
-        for i in range(total_steps):
+        for i in range(steps_range_size):
             step = i + steps_range[0]
 
-            weight = weight_begin + (weight_end - weight_begin) * (i / total_steps)
+            weight = weight_begin + (weight_end - weight_begin) * (i / max(steps_range_size - 1, 1))
             weight_step_expr = WeightedExpression(self.__nested, LiftExpression(weight))
             weight_step_expr = EditingExpression([weight_step_expr], LiftExpression(step))
             weight_step_expr = EditingExpression([weight_step_expr, ListExpression([])], LiftExpression(step + 1))
 
-            tensor = weight_step_expr.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
+            tensor = weight_step_expr.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, context)
 
         return tensor
 
@@ -178,25 +190,25 @@ class DeclarationExpression:
         self.__nested = nested
         self.__expression = expression
 
-    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         updated_context = dict(context)
         updated_context[self.__symbol] = self.__nested
-        return self.__expression.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, updated_context)
+        return self.__expression.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, updated_context)
 
 
 class SubstitutionExpression:
     def __init__(self, symbol):
         self.__symbol = symbol
 
-    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
-        return context[self.__symbol].append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, context)
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
+        return context[self.__symbol].append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, context)
 
 
 class LiftExpression:
     def __init__(self, text):
         self.text = text
 
-    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, context):
+    def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         for i in range(len(prompt_database)):
             prompt_database[i] += str(self.text)
 
