@@ -1,4 +1,10 @@
-def apply_sampled_range(t, positions):
+def scale_t(t, positions):
+    if t >= 1.:
+        return 1.
+
+    if t <= 0.:
+        return 0.
+
     distances = []
     for i in range(len(positions)-1):
         distances.append(positions[i+1] - positions[i])
@@ -29,4 +35,4 @@ def apply_sampled_range(t, positions):
 if __name__ == "__main__":
     total_steps = 20
     for i in range(total_steps):
-        print(i, apply_sampled_range(i/total_steps, [0, 9, 10, 20]))
+        print(i, scale_t(i/total_steps, [9, 10]))
