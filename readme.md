@@ -3,10 +3,17 @@
 Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Developing-extensions) that adds more possibilities to the native prompt syntax. Among other additions, it enables to interpolate between different the embeddings of different prompts continuously:
 
 ```
-[night light:magical forest:5,15] # linear prompt interpolation
-[night light:magical forest:5,15:catmull] # catmull-rom curve prompt interpolation
-(fire extinguisher:1.0,2.0) # linear weight interpolation
-[(fire extinguisher:1.0,2.0)::5] # prompt-editing-aware weight interpolation
+# linear prompt interpolation
+[night light:magical forest:5,15]
+
+# catmull-rom curve prompt interpolation
+[night light:magical forest:5,15:catmull]
+
+# linear weight interpolation
+(fire extinguisher:1.0,2.0)
+
+# prompt-editing-aware weight interpolation
+[(fire extinguisher:1.0,2.0)::5]
 ```
 
 ## Features
