@@ -35,14 +35,11 @@ class InterpolationExpression:
 
             expr_tensor = tensor if type(tensor) is int else tensor[:]
             expr_tensor = expr.append_to_tensor(expr_tensor, expr_database, expr_functions, steps_range, total_steps, context)
-            assert len(expr_functions) == 0, 'nested interpolations are not yet supported'
-
             expr_tensor = _tensor_add(expr_tensor, len(extended_prompt_database))
             extended_tensor.append(expr_tensor)
 
             extended_prompt_database.extend(expr_database)
-            if expr_functions:
-                extended_functions.append(expr_functions)
+            extended_functions.append(expr_functions)
 
         prompt_database[:] = extended_prompt_database
         interpolation_functions.append((self.get_interpolation_function(steps_range, total_steps, context), extended_functions))

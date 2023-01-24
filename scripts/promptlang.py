@@ -20,11 +20,17 @@ def _resolve_embeds(tensor, conditionings):
 def _interpolate_tensor(t, interpolation_functions, conditioning_tensor, tensor_axes):
     if tensor_axes == 0:
         return conditioning_tensor
-    if tensor_axes == 1:
-        return interpolation_functions[0][0](t, conditioning_tensor)
 
-    control_points = [_interpolate_tensor(t, interpolation_functions[1:], e, tensor_axes - 1) for e in conditioning_tensor]
-    return interpolation_functions[0][0](t, control_points)
+    interpolation_function, nested_functions = interpolation_functions[0]
+    control_points = list(conditioning_tensor)
+    if tensor_axes > 1:
+        control_points = [_interpolate_tensor(t, interpolation_functions[1:], sub_tensor, tensor_axes - 1) for sub_tensor in conditioning_tensor]
+
+    for i, nested_interpolation_functions in enumerate(nested_functions):
+        if nested_interpolation_functions:
+            control_points[i] = _interpolate_tensor(t, nested_interpolation_functions, control_points[i], len(nested_interpolation_functions))
+
+    return interpolation_function(t, control_points)
 
 
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
