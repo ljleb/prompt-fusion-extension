@@ -185,12 +185,12 @@ class SubstitutionExpression:
 
 
 class LiftExpression:
-    def __init__(self, text):
-        self.text = text
+    def __init__(self, value):
+        self.__value = value
 
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         for i in range(len(prompt_database)):
-            prompt_database[i] += str(self.text)
+            prompt_database[i] += str(self.__value)
 
         return tensor
 
