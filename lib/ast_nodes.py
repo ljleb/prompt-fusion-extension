@@ -2,7 +2,6 @@ from lib.catmull import compute_catmull
 from lib.bezier import compute_on_curve_with_points as compute_bezier
 from lib.linear import compute_linear
 from lib.t_scaler import scale_t
-import numpy
 
 
 class ListExpression:
@@ -68,17 +67,11 @@ class InterpolationExpression:
             'bezier': compute_bezier,
         }[self.__function_name]
 
-        def part_scale_t(t):
-            mapped_t = t * total_steps
-            if mapped_t <= steps[0]:
-                return 0.
-            if mapped_t >= steps[-1]:
-                return 1.
-
-            mapped_t = (mapped_t - steps[0]) / (steps[-1] - steps[0])
+        def steps_scale_t(t):
+            mapped_t = (t * total_steps - steps[0]) / (steps[-1] - steps[0])
             return scale_t(mapped_t, steps)
 
-        return lambda t, embeds: interpolation_function(part_scale_t(t), embeds)
+        return lambda t, embeds: interpolation_function(steps_scale_t(t), embeds)
 
 
 def _tensor_add(tensor, value):

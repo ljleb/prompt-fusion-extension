@@ -1,4 +1,10 @@
 def scale_t(t, positions):
+    if t >= 1.:
+        return 1.
+
+    if t <= 0.:
+        return 0.
+
     distances = []
     for i in range(len(positions)-1):
         distances.append(positions[i+1] - positions[i])
