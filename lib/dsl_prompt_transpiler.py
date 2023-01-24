@@ -88,7 +88,7 @@ class ExpressionLarkTransformer(Transformer):
     @v_args(inline=True)
     def interpolation_expr(self, subexprs):
         if str(subexprs[-1]) in {'linear', 'catmull', 'bezier'}:
-            function_name = subexprs[-1]
+            function_name = str(subexprs[-1])
             subexprs = subexprs[:-1]
         else:
             function_name = None
@@ -112,7 +112,7 @@ class ExpressionLarkTransformer(Transformer):
 
     def text_expr(self, args):
         backslash_pattern = re.compile(r'\\(.)')
-        return ast.LiftExpression(backslash_pattern.sub(r'\1', ' '.join(args)) + ' ')
+        return ast.LiftExpression(backslash_pattern.sub(r'\1', ' '.join(args)))
 
 
 expr_parser = lark.Lark(expression_grammar, parser='lalr', transformer=ExpressionLarkTransformer())
