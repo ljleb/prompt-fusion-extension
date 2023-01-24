@@ -21,19 +21,8 @@ expression_grammar = r'''
 weight_num: weight_num_txt -> float_expr
 ?weight_num_txt: SIGN? (FLOAT | INTEGER) -> concat
 
-?interpolation_expr: "[" interpolation_subexprs interpolation_single_step "]" -> interpolation_expr
-                   | "[" interpolation_subexprs interpolation_steps interpolation_parameter "]" -> interpolation_expr
-?interpolation_subexprs: (list_expr_opt ":")+ -> flatten_list
-?interpolation_single_step: step -> flatten_list
-?interpolation_steps: step ("," step)+ -> flatten_list
-?step: (step_num | substitution_expr)? -> flatten_opt
-step_num: step_num_txt -> step_expr
-step_num_txt: SIGN? INTEGER -> concat
-
-?interpolation_parameter: (":" INTERPOLATION_FUNCTION)? -> flatten_opt
-INTERPOLATION_FUNCTION: "linear"
-                      | "catmull"
-                      | "bezier"
+?interpolation_expr: "[" interpolation_subexprs "]" -> interpolation_expr
+?interpolation_subexprs: list_expr_opt (":" list_expr_opt)+ -> flatten_list
 
 ?definition_expr: "$" SYMBOL "=" expr list_expr -> assignment_expr
 substitution_expr: "$" SYMBOL -> substitution_expr
@@ -73,7 +62,7 @@ class ExpressionLarkTransformer(Transformer):
         return ''.join(args)
 
     def step_expr(self, args):
-        args = [arg for arg in args if arg is not None]
+        args = filter(lambda arg: arg is not None, args)
 
         # `step + 1` because original language is off by 1
         return ast.LiftExpression(int(''.join(args)) + 1)
@@ -97,13 +86,23 @@ class ExpressionLarkTransformer(Transformer):
         return ast.WeightedExpression(*args, positive=False)
 
     @v_args(inline=True)
-    def interpolation_expr(self, exprs, steps, function_name=None):
-        function_name = str(function_name) if function_name is not None else None
+    def interpolation_expr(self, subexprs):
+        if str(subexprs[-1]) in {'linear', 'catmull', 'bezier'}:
+            function_name = subexprs[-1]
+            subexprs = subexprs[:-1]
+        else:
+            function_name = None
+
+        steps = [None if not step
+                 else ast.SubstitutionExpression(step[1:]) if step.startswith('$')
+                 else ast.LiftExpression(step)
+                 for step in str(subexprs[-1]).split(',')]
+        subexprs = subexprs[:-1]
         if len(steps) > 1:
-            return ast.InterpolationExpression(exprs, steps, function_name)
+            return ast.InterpolationExpression(subexprs, steps, function_name)
         else:
             assert function_name is None, 'bad prompt editing syntax'
-            return ast.EditingExpression(exprs, steps[0])
+            return ast.EditingExpression(subexprs, steps[0])
 
     def assignment_expr(self, args):
         return ast.DeclarationExpression(*args)

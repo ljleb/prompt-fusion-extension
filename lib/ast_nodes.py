@@ -9,10 +9,23 @@ class ListExpression:
         self.__expressions = expressions
 
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
-        for expression in self.__expressions:
-            tensor = expression.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, context)
+        if len(self.__expressions) <= 0:
+            return tensor
+
+        def expr_append_to_tensor(expr):
+            return expr.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, context)
+
+        tensor = expr_append_to_tensor(self.__expressions[0])
+        for expression in self.__expressions[1:]:
+            for i in range(len(prompt_database)):
+                prompt_database[i] += ' '
+
+            tensor = expr_append_to_tensor(expression)
 
         return tensor
+
+    def __str__(self):
+        return ' '.join(f'{expr}:' for expr in self.__expressions)
 
 
 class InterpolationExpression:
@@ -71,6 +84,11 @@ class InterpolationExpression:
 
         return steps_scale_t
 
+    def __str__(self):
+        expressions = ''.join(f'{expr}:' for expr in self.__expressions)
+        steps = ','.join(str(step) for step in self.__steps)
+        return f'[{expressions}{steps}:{self.__function_name}]'
+
 
 def _tensor_add(tensor, value):
     try:
@@ -105,6 +123,10 @@ class EditingExpression:
 
         return tensor
 
+    def __str__(self):
+        expressions = ''.join(f'{expr}:' for expr in self.__expressions)
+        return f'[{expressions}{self.__step}]'
+
 
 class WeightedExpression:
     def __init__(self, nested, weight=None, positive=True):
@@ -138,6 +160,13 @@ class WeightedExpression:
 
         return tensor
 
+    def __str__(self):
+        if self.__positive:
+            weight = f':{self.__weight}' if self.__weight is not None else ''
+            return f'({self.__nested}{weight})'
+        else:
+            return f'[{self.__nested}]'
+
 
 class WeightInterpolationExpression:
     def __init__(self, nested, weight_begin, weight_end):
@@ -163,6 +192,9 @@ class WeightInterpolationExpression:
 
         return tensor
 
+    def __str__(self):
+        return f'({self.__nested}:{self.__weight_begin},{self.__weight_end})'
+
 
 class DeclarationExpression:
     def __init__(self, symbol, nested, expression):
@@ -175,6 +207,9 @@ class DeclarationExpression:
         updated_context[self.__symbol] = self.__nested
         return self.__expression.append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, updated_context)
 
+    def __str__(self):
+        return f'${self.__symbol} = {self.__nested}\n{self.__expression}'
+
 
 class SubstitutionExpression:
     def __init__(self, symbol):
@@ -183,6 +218,9 @@ class SubstitutionExpression:
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         return context[self.__symbol].append_to_tensor(tensor, prompt_database, interpolation_functions, steps_range, total_steps, context)
 
+    def __str__(self):
+        return f'${self.__symbol}'
+
 
 class LiftExpression:
     def __init__(self, value):
@@ -190,10 +228,12 @@ class LiftExpression:
 
     def append_to_tensor(self, tensor, prompt_database, interpolation_functions, steps_range, total_steps, context):
         for i in range(len(prompt_database)):
-            prompt_database[i] += str(self.__value)
+            prompt_database[i] += str(self)
 
         return tensor
 
+    def __str__(self):
+        return str(self.__value)
 
 def _eval_float(expression, steps_range, total_steps, context):
     mock_database = ['']
