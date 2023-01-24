@@ -1,7 +1,7 @@
 ## Features
-- Prompt interpolation using a curve function
+- [Prompt interpolation using a curve function](https://github.com/ljleb/prompt-fusion-extension/wiki/Prompt-syntax)
+- [Weight interpolation aware of contextual prompt editing](https://github.com/ljleb/prompt-fusion-extension/wiki/Weight-interpolation)
 - Complete backwards compatibility with prompt syntax from https://github.com/AUTOMATIC1111/stable-diffusion-webui
-- Weight interpolation aware of contextual prompt editing
 
 ## Installation
 1. Visit the **Extensions** tab of Automatic's WebUI.
