@@ -20,7 +20,7 @@ Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/stable-
 
 ### 1. Influencing the beginning of the sampling process
 
-Interpolate linearly (by default) from `lion` (step 0) to `bird` (step 7) to `girl` (step 10), and stay at `girl` for the rest of the sampling steps:
+Interpolate linearly (by default) from `lion` (step 0) to `bird` (step 8) to `girl` (step 11), and stay at `girl` for the rest of the sampling steps:
 
 ```
 [lion:bird:girl:, 7, 10]
