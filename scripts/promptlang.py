@@ -5,9 +5,10 @@ sys.path.append(base_dir)
 
 from lib.interpolation_tensor import InterpolationTensorBuilder
 from lib.dsl_prompt_transpiler import parse_prompt
+from lib.hijacker import prepare_hijack
+prepare_hijack()
 from lib.hijacker import prompt_parser_hijacker
 from modules.prompt_parser import ScheduledPromptConditioning
-
 import torch
 
 
