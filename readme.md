@@ -36,7 +36,7 @@ Interpolate using an embeddings bezier curve from `fireball monster` (step 0) to
 [fireball:seawater:dragon: , .1, .4:bezier] monster
 ```
 
-![curve2](https://user-images.githubusercontent.com/32277961/214940843-f1880cd1-fa96-44d4-9132-18cc96459257.gif)
+![curve2](https://user-images.githubusercontent.com/32277961/214941229-2dccad78-f856-42bb-ae6b-16b65b273cda.gif)
 
 ## Features
 - [Prompt interpolation using a curve function](https://github.com/ljleb/prompt-fusion-extension/wiki/Prompt-syntax)
