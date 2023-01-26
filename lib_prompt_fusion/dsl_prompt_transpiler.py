@@ -1,4 +1,4 @@
-import lib.ast_nodes as ast
+import lib_prompt_fusion.ast_nodes as ast
 import re
 from lark import lark, v_args, Transformer
 

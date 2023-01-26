@@ -1,8 +1,8 @@
-from lib.catmull import compute_catmull
-from lib.bezier import compute_on_curve_with_points as compute_bezier
-from lib.linear import compute_linear
-from lib.t_scaler import scale_t
-from lib.interpolation_tensor import InterpolationTensorBuilder
+from lib_prompt_fusion.catmull import compute_catmull
+from lib_prompt_fusion.bezier import compute_on_curve_with_points as compute_bezier
+from lib_prompt_fusion.linear import compute_linear
+from lib_prompt_fusion.t_scaler import scale_t
+from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 
 
 class ListExpression:
