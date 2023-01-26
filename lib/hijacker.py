@@ -1,5 +1,4 @@
 from modules import prompt_parser
-from modules.script_callbacks import on_script_unloaded
 
 
 class ModuleHijacker:
@@ -34,12 +33,3 @@ class ModuleHijacker:
             return module_hijacker
         else:
             return getattr(module, hijacker_attribute)
-
-
-prompt_parser_hijacker = None
-
-
-def prepare_hijack():
-    global prompt_parser_hijacker
-    fusion_hijacker_attribute = '__fusion_hijacker'
-    prompt_parser_hijacker = ModuleHijacker.install_or_get(prompt_parser, fusion_hijacker_attribute, on_script_unloaded)

@@ -5,11 +5,15 @@ sys.path.append(base_dir)
 
 from lib.interpolation_tensor import InterpolationTensorBuilder
 from lib.dsl_prompt_transpiler import parse_prompt
-from lib.hijacker import prepare_hijack
-prepare_hijack()
-from lib.hijacker import prompt_parser_hijacker
+from lib.hijacker import ModuleHijacker
+import modules
+from modules.script_callbacks import on_script_unloaded
 from modules.prompt_parser import ScheduledPromptConditioning
 import torch
+
+
+fusion_hijacker_attribute = '__fusion_hijacker'
+prompt_parser_hijacker = ModuleHijacker.install_or_get(modules.prompt_parser, fusion_hijacker_attribute, on_script_unloaded)
 
 
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
