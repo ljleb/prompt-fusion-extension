@@ -24,10 +24,7 @@ Interpolate linearly from `lion` (step 0) to `bird` (step 7) to `girl` (step 10)
 [lion:bird:girl:, 7, 10]
 ```
 
-![curve](https://user-images.githubusercontent.com/32277961/214721145-5fb423bd-3723-442c-b7d6-d494e721cfac.gif)
-
-
-## More examples
+![curve](https://user-images.githubusercontent.com/32277961/214723984-a39e0f00-d5a6-4184-b4d8-d161d5e4f301.gif)
 
 ## Features
 - [Prompt interpolation using a curve function](https://github.com/ljleb/prompt-fusion-extension/wiki/Prompt-syntax)
