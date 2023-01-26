@@ -20,7 +20,7 @@ class ModuleHijacker:
 
         return decorator
 
-    def reset(self):
+    def reset_module(self):
         for attribute, original_function in self.__original_functions.items():
             setattr(self.__module, attribute, original_function)
 
@@ -30,7 +30,7 @@ class ModuleHijacker:
             module_hijacker = ModuleHijacker(module)
             setattr(module, hijacker_attribute, module_hijacker)
             register_uninstall(lambda: delattr(prompt_parser, hijacker_attribute))
-            register_uninstall(module_hijacker.reset)
+            register_uninstall(module_hijacker.reset_module)
             return module_hijacker
         else:
             return getattr(module, hijacker_attribute)
