@@ -3,82 +3,66 @@ import sys
 base_dir = scripts.basedir()
 sys.path.append(base_dir)
 
+from lib.interpolation_tensor import InterpolationTensorBuilder
 from lib.dsl_prompt_transpiler import parse_prompt
-from lib.hijacker import prompt_parser_hijacker
+from lib.hijacker import ModuleHijacker
+import modules
+from modules.script_callbacks import on_script_unloaded
 from modules.prompt_parser import ScheduledPromptConditioning
-
 import torch
 
 
+fusion_hijacker_attribute = '__fusion_hijacker'
+prompt_parser_hijacker = ModuleHijacker.install_or_get(modules.prompt_parser, fusion_hijacker_attribute, on_script_unloaded)
+
+
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
-def hijacked_get_learned_conditioning(model, prompts, total_steps, original_function):
-    flattened_prompts, prompts_interpolation_info = parse_interpolation_info(prompts, total_steps)
+def _hijacked_get_learned_conditioning(model, prompts, total_steps, original_function):
+    tensor_builders = _parse_tensor_builders(prompts, total_steps)
+    flattened_prompts, consecutive_ranges = _get_flattened_prompts(tensor_builders)
+
     flattened_conditionings = original_function(model, flattened_prompts, total_steps)
-    return schedule_conditionings(flattened_conditionings, prompts_interpolation_info, total_steps)
+    conditionings_tensors = [tensor_builder.build(flattened_conditionings[begin:end])
+                             for begin, end, tensor_builder
+                             in zip(consecutive_ranges[:-1], consecutive_ranges[1:], tensor_builders)]
+
+    return [_schedule_conditionings(conditionings_tensor, total_steps)
+            for conditionings_tensor in conditionings_tensors]
 
 
-def parse_interpolation_info(prompts, total_steps):
-    flattened_prompts = []
-    prompts_interpolation_info = []
+def _parse_tensor_builders(prompts, total_steps):
+    tensor_builders = []
 
     for prompt in prompts:
         expr = parse_prompt(prompt)
-        tensor = 0
-        prompt_database = ['']
-        interpolation_functions = []
+        tensor_builder = InterpolationTensorBuilder()
+        expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, dict())
+        tensor_builders.append(tensor_builder)
 
-        tensor = expr.append_to_tensor(tensor, prompt_database, interpolation_functions, (0, total_steps), total_steps, dict())
-
-        prompts_interpolation_info.append((len(flattened_prompts), len(prompt_database), (tensor, interpolation_functions)))
-        flattened_prompts.extend(prompt_database)
-
-    return flattened_prompts, prompts_interpolation_info
+    return tensor_builders
 
 
-def schedule_conditionings(flattened_conditionings, prompts_interpolation_info, steps):
-    scheduled_conditionings = []
-    for conditionings_begin, conditionings_size, interpolation_tensor in prompts_interpolation_info:
-        indices_tensor, interpolation_functions = interpolation_tensor
-        conditioning_database = flattened_conditionings[conditionings_begin:conditionings_begin + conditionings_size]
-        conditionings_tensor = _resolve_conditionings(indices_tensor, conditioning_database)
+def _get_flattened_prompts(tensor_builders):
+    flattened_prompts = []
+    consecutive_ranges = [0]
 
-        interpolated_conditionings = []
-        for step in range(steps):
-            interpolated_conditioning = _interpolate_tensor(conditionings_tensor, interpolation_functions, step / steps, step)
-            if len(interpolated_conditionings) > 0 and torch.all(torch.eq(interpolated_conditionings[-1].cond, interpolated_conditioning)):
-                interpolated_conditionings[-1] = ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditionings[-1].cond)
-            else:
-                interpolated_conditionings.append(ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditioning))
+    for tensor_builder in tensor_builders:
+        flattened_prompts.extend(tensor_builder.get_prompt_database())
+        consecutive_ranges.append(len(flattened_prompts))
 
-        scheduled_conditionings.append(interpolated_conditionings)
-
-    return scheduled_conditionings
+    return flattened_prompts, consecutive_ranges
 
 
-def _resolve_conditionings(tensor, conditionings):
-    if type(tensor) is int:
-        return conditionings[tensor]
-    else:
-        return [_resolve_conditionings(e, conditionings) for e in tensor]
+def _schedule_conditionings(tensor, steps):
+    interpolated_conditionings = []
+    for step in range(steps):
+        interpolated_conditioning = tensor.interpolate(step / steps, step)
+        if len(interpolated_conditionings) > 0 and torch.all(torch.eq(interpolated_conditionings[-1].cond, interpolated_conditioning)):
+            interpolated_conditionings[-1] = ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditionings[-1].cond)
+        else:
+            interpolated_conditionings.append(ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditioning))
 
-
-def _interpolate_tensor(tensor, interpolation_functions, t, step):
-    tensor_axes = len(interpolation_functions)
-    if tensor_axes == 0:
-        for schedule in tensor:
-            if schedule.end_at_step >= step:
-                return schedule.cond
-
-    interpolation_function, control_points_functions = interpolation_functions[0]
-    if tensor_axes == 1:
-        control_points = list(tensor)
-    else:
-        control_points = [_interpolate_tensor(sub_tensor, interpolation_functions[1:], t, step) for sub_tensor in tensor]
-
-    for i, nested_functions in enumerate(control_points_functions):
-        control_points[i] = _interpolate_tensor(control_points[i], nested_functions, t, step)
-
-    return interpolation_function(t, control_points)
+    return interpolated_conditionings
 
 
 class FusionScript(scripts.Script):
