@@ -91,7 +91,7 @@ class EditingExpression:
             expr.extend_tensor(tensor_builder, expr_steps_range, total_steps, context)
             tensor_builder.append(':')
 
-        tensor_builder.append(f'{step - 1}]')
+        tensor_builder.append(f'{step}]')
 
     def __str__(self):
         expressions = ''.join(f'{expr}:' for expr in self.__expressions)
