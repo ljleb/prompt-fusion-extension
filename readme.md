@@ -30,7 +30,7 @@ Interpolate linearly (the default) from `lion` (step 0) to `bird` (step 7) to `g
 
 ### 2. Influencing the middle of the sampling process
 
-Interpolate using an embeddings bezier curve from `fireball monster` (step 0) to `dragon monster` (step 30 * 0.4 = step 12), while using `seawater monster` as an intermediate control point to steer the curve away during interpolation and get creative ressults:
+Interpolate using an embeddings bezier curve from `fireball monster` (step 0) to `dragon monster` (step 30 * 0.4 = step 12), while using `seawater monster` as an intermediate control point to steer the curve away during interpolation and get creative results:
 
 ```
 [fireball:seawater:dragon: , .1, .4:bezier] monster
