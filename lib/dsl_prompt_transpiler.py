@@ -4,9 +4,11 @@ from lark import lark, v_args, Transformer
 
 
 expression_grammar = r'''
-?start: list_expr_opt
+?start: expr* and_weight_expr? -> list_expr
 ?list_expr: expr+ -> list_expr
 ?list_expr_opt: expr* -> list_expr
+
+?and_weight_expr: ":" FREE_FLOAT -> and_weight_expr
 
 ?expr: substitution_expr
      | definition_expr
@@ -60,6 +62,10 @@ class ExpressionLarkTransformer(Transformer):
     @v_args(inline=True)
     def concat(self, *args):
         return ''.join(args)
+
+    @v_args(inline=True)
+    def and_weight_expr(self, weight):
+        return ast.LiftExpression(f':{weight}')
 
     def step_expr(self, args):
         args = filter(lambda arg: arg is not None, args)
