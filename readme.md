@@ -26,7 +26,7 @@ Interpolate linearly from `lion` (step 0) to `bird` (step 7) to `girl` (step 10)
 [lion:bird:girl:, 7, 10]
 ```
 
-![ezgif com-gif-maker](https://user-images.githubusercontent.com/32277961/214725976-b72bafc6-0c5d-4491-9c95-b73da41da082.gif)
+![curve1](https://user-images.githubusercontent.com/32277961/214725976-b72bafc6-0c5d-4491-9c95-b73da41da082.gif)
 
 ### 2. Influencing the middle of the sampling process
 
@@ -36,8 +36,7 @@ Interpolate using an embeddings bezier curve from `fireball monster` (step 0) to
 [fireball:seawater:dragon: , .1, .4:bezier] monster
 ```
 
-![curve2](https://user-images.githubusercontent.com/32277961/214736380-6542e8f6-7687-40c4-9b2c-48ef6029e5a4.gif)
-
+![curve2](https://user-images.githubusercontent.com/32277961/214736678-3c795d12-fb35-4b59-93bd-5bd507e3f772.gif)
 
 ## Features
 - [Prompt interpolation using a curve function](https://github.com/ljleb/prompt-fusion-extension/wiki/Prompt-syntax)
