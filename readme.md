@@ -16,6 +16,19 @@ Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/stable-
 [(fire extinguisher:1.0,2.0)::5]
 ```
 
+## Example Prompt
+
+Interpolate linearly from `lion` (step 0) to `bird` (step 7) to `girl` (step 10) and stay at `girl` for the rest of the sampling steps:
+
+```
+[lion:bird:girl:, 7, 10]
+```
+
+![curve](https://user-images.githubusercontent.com/32277961/214721145-5fb423bd-3723-442c-b7d6-d494e721cfac.gif)
+
+
+## More examples
+
 ## Features
 - [Prompt interpolation using a curve function](https://github.com/ljleb/prompt-fusion-extension/wiki/Prompt-syntax)
 - [Weight interpolation aware of contextual prompt editing](https://github.com/ljleb/prompt-fusion-extension/wiki/Weight-interpolation)
