@@ -3,7 +3,7 @@ import sys
 base_dir = scripts.basedir()
 sys.path.append(base_dir)
 
-from lib.ast_nodes import InterpolationTensorBuilder
+from lib.interpolation_tensor import InterpolationTensorBuilder
 from lib.dsl_prompt_transpiler import parse_prompt
 from lib.hijacker import prompt_parser_hijacker
 from modules.prompt_parser import ScheduledPromptConditioning
