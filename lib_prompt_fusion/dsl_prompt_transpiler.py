@@ -101,7 +101,7 @@ class ExpressionLarkTransformer(Transformer):
 
         steps = [None if not step
                  else ast.SubstitutionExpression(step[1:]) if step.startswith('$')
-                 else ast.LiftExpression(step)
+                 else ast.LiftExpression(float(step) + 1)
                  for step in str(subexprs[-1]).split(',')]
         subexprs = subexprs[:-1]
         if len(steps) > 1:
