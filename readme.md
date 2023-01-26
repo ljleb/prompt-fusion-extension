@@ -16,7 +16,9 @@ Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/stable-
 [(fire extinguisher:1.0,2.0)::5]
 ```
 
-## Example Prompt
+## Examples
+
+### 1. Influencing the beginning of the sampling process
 
 Interpolate linearly from `lion` (step 0) to `bird` (step 7) to `girl` (step 10) and stay at `girl` for the rest of the sampling steps:
 
@@ -25,6 +27,17 @@ Interpolate linearly from `lion` (step 0) to `bird` (step 7) to `girl` (step 10)
 ```
 
 ![ezgif com-gif-maker](https://user-images.githubusercontent.com/32277961/214725976-b72bafc6-0c5d-4491-9c95-b73da41da082.gif)
+
+### 2. Influencing the middle of the sampling process
+
+Interpolate using an embeddings bezier curve from `fireball monster` (step 0) to `dragon monster` (step 30 * 0.4 = step 12), while using `seawater monster` as an intermediate control point to steer the curve away during interpolation and get creative ressults:
+
+```
+[fireball:seawater:dragon: , .1, .4:bezier] monster
+```
+
+![curve2](https://user-images.githubusercontent.com/32277961/214736380-6542e8f6-7687-40c4-9b2c-48ef6029e5a4.gif)
+
 
 ## Features
 - [Prompt interpolation using a curve function](https://github.com/ljleb/prompt-fusion-extension/wiki/Prompt-syntax)
