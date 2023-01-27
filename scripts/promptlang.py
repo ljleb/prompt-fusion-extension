@@ -6,13 +6,15 @@ sys.path.append(base_dir)
 from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 from lib_prompt_fusion.dsl_prompt_transpiler import parse_prompt
 from lib_prompt_fusion.hijacker import ModuleHijacker
-from modules import prompt_parser
-from modules.script_callbacks import on_script_unloaded, on_model_loaded
+from modules import prompt_parser, script_callbacks
 import torch
 
 
 fusion_hijacker_attribute = '__fusion_hijacker'
-prompt_parser_hijacker = ModuleHijacker.install_or_get(prompt_parser, fusion_hijacker_attribute, on_script_unloaded)
+prompt_parser_hijacker = ModuleHijacker.install_or_get(
+    module=prompt_parser,
+    hijacker_attribute=fusion_hijacker_attribute,
+    register_uninstall=script_callbacks.on_script_unloaded)
 
 
 empty_embedding = None
@@ -20,10 +22,10 @@ empty_embedding = None
 
 def init_empty_embedding(model):
     global empty_embedding
-    empty_embedding = prompt_parser.get_learned_conditioning(model, [''], 1)[0][0].cond
+    empty_embedding = model.get_learned_conditioning([''])[0]
 
 
-on_model_loaded(init_empty_embedding)
+script_callbacks.on_model_loaded(init_empty_embedding)
 
 
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
