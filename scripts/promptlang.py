@@ -6,14 +6,13 @@ sys.path.append(base_dir)
 from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 from lib_prompt_fusion.dsl_prompt_transpiler import parse_prompt
 from lib_prompt_fusion.hijacker import ModuleHijacker
-import modules
+from modules import prompt_parser
 from modules.script_callbacks import on_script_unloaded, on_model_loaded
-from modules.prompt_parser import ScheduledPromptConditioning
 import torch
 
 
 fusion_hijacker_attribute = '__fusion_hijacker'
-prompt_parser_hijacker = ModuleHijacker.install_or_get(modules.prompt_parser, fusion_hijacker_attribute, on_script_unloaded)
+prompt_parser_hijacker = ModuleHijacker.install_or_get(prompt_parser, fusion_hijacker_attribute, on_script_unloaded)
 
 
 empty_embedding = None
@@ -21,7 +20,7 @@ empty_embedding = None
 
 def init_empty_embedding(model):
     global empty_embedding
-    empty_embedding = modules.prompt_parser.get_learned_conditioning(model, [''], 1)[0][0].cond
+    empty_embedding = prompt_parser.get_learned_conditioning(model, [''], 1)[0][0].cond
 
 
 on_model_loaded(init_empty_embedding)
@@ -65,30 +64,34 @@ def _get_flattened_prompts(tensor_builders):
     return flattened_prompts, consecutive_ranges
 
 
-def _resize_uniformly(flattened_conditionings):
-    if len(flattened_conditionings) > 1:
-        max_cond_size = max(cond.cond.size(0)
-                            for conds in flattened_conditionings
-                            for cond in conds) // 77
+def _resize_uniformly(conditionings):
+    max_cond_size = max(schedule.cond.size(0)
+                        for schedules in conditionings
+                        for schedule in schedules)
 
-        for schedules in flattened_conditionings:
-            schedules[:] = [
-                ScheduledPromptConditioning(
-                    cond=torch.concatenate([schedule.cond] + [empty_embedding]*(max_cond_size - schedule.cond.size(0) // 77)),
-                    end_at_step=schedule.end_at_step)
-                for schedule in schedules]
+    conditionings[:] = ([_resize_schedule(schedule, max_cond_size) for schedule in schedules]
+                        for schedules in conditionings)
+    return conditionings
 
-    return flattened_conditionings
+
+def _resize_schedule(schedule, target_size):
+    cond_missing_size = (target_size - schedule.cond.size(0)) // 77
+    if cond_missing_size == 0:
+        return schedule
+
+    extended_conditioning = torch.concatenate([schedule.cond] + [empty_embedding] * cond_missing_size)
+    return prompt_parser.ScheduledPromptConditioning(cond=extended_conditioning, end_at_step=schedule.end_at_step)
 
 
 def _schedule_conditionings(tensor, steps):
     interpolated_conditionings = []
+
     for step in range(steps):
         interpolated_conditioning = tensor.interpolate(step / steps, step)
-        if len(interpolated_conditionings) > 0 and torch.all(torch.eq(interpolated_conditionings[-1].cond, interpolated_conditioning)):
-            interpolated_conditionings[-1] = ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditionings[-1].cond)
+        if interpolated_conditionings and torch.all(torch.eq(interpolated_conditionings[-1].cond, interpolated_conditioning)):
+            interpolated_conditionings[-1] = prompt_parser.ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditionings[-1].cond)
         else:
-            interpolated_conditionings.append(ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditioning))
+            interpolated_conditionings.append(prompt_parser.ScheduledPromptConditioning(end_at_step=step, cond=interpolated_conditioning))
 
     return interpolated_conditionings
 

@@ -160,7 +160,7 @@ class DeclarationExpression:
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
         updated_context = dict(context)
         updated_context[self.__symbol] = self.__nested
-        return self.__expression.extend_tensor(tensor_builder, steps_range, total_steps, updated_context)
+        self.__expression.extend_tensor(tensor_builder, steps_range, total_steps, updated_context)
 
     def __str__(self):
         return f'${self.__symbol} = {self.__nested}\n{self.__expression}'
@@ -171,7 +171,7 @@ class SubstitutionExpression:
         self.__symbol = symbol
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
-        return context[self.__symbol].extend_tensor(tensor_builder, steps_range, total_steps, context)
+        context[self.__symbol].extend_tensor(tensor_builder, steps_range, total_steps, context)
 
     def __str__(self):
         return f'${self.__symbol}'
