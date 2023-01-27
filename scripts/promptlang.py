@@ -4,7 +4,7 @@ base_dir = scripts.basedir()
 sys.path.append(base_dir)
 
 from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
-from lib_prompt_fusion.dsl_prompt_transpiler import parse_prompt
+from lib_prompt_fusion.prompt_parser import parse_prompt
 from lib_prompt_fusion.hijacker import ModuleHijacker
 from modules import prompt_parser, script_callbacks
 import torch
@@ -20,12 +20,12 @@ prompt_parser_hijacker = ModuleHijacker.install_or_get(
 empty_embedding = None
 
 
-def init_empty_embedding(model):
+def _init_empty_embedding(model):
     global empty_embedding
     empty_embedding = model.get_learned_conditioning([''])[0]
 
 
-script_callbacks.on_model_loaded(init_empty_embedding)
+script_callbacks.on_model_loaded(_init_empty_embedding)
 
 
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
