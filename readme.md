@@ -4,16 +4,16 @@ Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/stable-
 
 ```
 # linear prompt interpolation
-[night light:magical forest:5,15]
+[night light:magical forest: 5, 15]
 
 # catmull-rom curve prompt interpolation
-[night light:magical forest:norvegian territory:5,15,25:catmull]
+[night light:magical forest:norvegian territory: 5, 15, 25:catmull]
 
 # linear weight interpolation
-(fire extinguisher:1.0,2.0)
+(fire extinguisher: 1.0, 2.0)
 
 # prompt-editing-aware weight interpolation
-[(fire extinguisher:1.0,2.0)::5]
+[(fire extinguisher: 1.0, 2.0)::5]
 ```
 
 ## Examples
@@ -23,7 +23,7 @@ Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/stable-
 Interpolate linearly (by default) from `lion` (step 0) to `bird` (step 7) to `girl` (step 10), and stay at `girl` for the rest of the sampling steps:
 
 ```
-[lion:bird:girl:, 6, 9]
+[lion:bird:girl: , 6, 9]
 ```
 
 ![curve1](https://user-images.githubusercontent.com/32277961/214725976-b72bafc6-0c5d-4491-9c95-b73da41da082.gif)
