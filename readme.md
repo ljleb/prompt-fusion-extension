@@ -43,6 +43,11 @@ Interpolate using a bezier curve from `fireball monster` (step 0) to `dragon mon
 - [Weight interpolation aware of contextual prompt editing](https://github.com/ljleb/prompt-fusion-extension/wiki/Weight-interpolation)
 - Complete backwards compatibility with prompt syntax from https://github.com/AUTOMATIC1111/stable-diffusion-webui
 
+## Webui supported releases
+
+The following webui releases are officially supported:
+- `v1.0.0-pre`
+
 ## Installation
 1. Visit the **Extensions** tab of Automatic's WebUI.
 2. Visit the **Install from URL** subtab.
