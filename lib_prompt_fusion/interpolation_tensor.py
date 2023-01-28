@@ -21,7 +21,7 @@ class InterpolationTensor:
                               for sub_tensor in self.__conditionings_tensor]
 
         for i, nested_functions in enumerate(control_points_functions):
-            control_points[i] = InterpolationTensor(control_points[i], nested_functions).interpolate(t, step, 0)
+            control_points[i] = InterpolationTensor(control_points[i], nested_functions).interpolate(t, step)
 
         return interpolation_function(t, control_points)
 
