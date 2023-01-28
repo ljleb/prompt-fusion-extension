@@ -20,7 +20,7 @@ prompt_parser_hijacker = ModuleHijacker.install_or_get(
 
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
 def _hijacked_get_learned_conditioning(model, prompts, total_steps, original_function):
-    empty_cond.init_empty_embedding(model)
+    empty_cond.init(model)
 
     tensor_builders = _parse_tensor_builders(prompts, total_steps)
     flattened_prompts, consecutive_ranges = _get_flattened_prompts(tensor_builders)
