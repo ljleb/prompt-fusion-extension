@@ -3,8 +3,8 @@ class InterpolationTensor:
         self.__conditionings_tensor = conditionings_tensor
         self.__interpolation_functions = interpolation_functions
 
-    def interpolate(self, t, step):
-        tensor_axes = len(self.__interpolation_functions)
+    def interpolate(self, t, step, axis=0):
+        tensor_axes = len(self.__interpolation_functions) - axis
         if tensor_axes == 0:
             if type(self.__conditionings_tensor) is not list:
                 return self.__conditionings_tensor
@@ -13,15 +13,15 @@ class InterpolationTensor:
                 if schedule.end_at_step >= step:
                     return schedule.cond
 
-        interpolation_function, control_points_functions = self.__interpolation_functions[0]
+        interpolation_function, control_points_functions = self.__interpolation_functions[axis]
         if tensor_axes == 1:
             control_points = list(self.__conditionings_tensor)
         else:
-            control_points = [InterpolationTensor(sub_tensor, self.__interpolation_functions[1:]).interpolate(t, step)
+            control_points = [InterpolationTensor(sub_tensor, self.__interpolation_functions).interpolate(t, step, axis + 1)
                               for sub_tensor in self.__conditionings_tensor]
 
         for i, nested_functions in enumerate(control_points_functions):
-            control_points[i] = InterpolationTensor(control_points[i], nested_functions).interpolate(t, step)
+            control_points[i] = InterpolationTensor(control_points[i], nested_functions).interpolate(t, step, 0)
 
         return interpolation_function(t, control_points)
 
