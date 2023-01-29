@@ -51,7 +51,7 @@ class InterpolationExpression:
         for i, step in enumerate(steps):
             step = _eval_float(step, steps_range, total_steps, context)
             if 0 < step < 1:
-                step = steps_range[0] + step * (steps_range[1] - steps_range[0])
+                step *= total_steps
 
             steps[i] = int(step)
 
