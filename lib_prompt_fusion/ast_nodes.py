@@ -51,7 +51,7 @@ class InterpolationExpression:
         for i, step in enumerate(steps):
             step = _eval_float(step, steps_range, total_steps, context)
             if 0 < step < 1:
-                step = steps_range[0] + step * (steps_range[1] - steps_range[0])
+                step *= total_steps
 
             steps[i] = int(step)
 
@@ -82,8 +82,10 @@ class EditingExpression:
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
         step = _eval_float(self.__step, steps_range, total_steps, context)
-        if step == int(step):
-            step = int(step)
+        if 0 < step < 1:
+            step *= total_steps
+
+        step = int(step)
 
         tensor_builder.append('[')
         for expr_i, expr in enumerate(self.__expressions):
