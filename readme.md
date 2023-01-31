@@ -66,6 +66,6 @@ The following webui releases are officially supported:
 
 ## Related Projects
 
-- https://github.com/Kahsolt/stable-diffusion-webui-prompt-travel
-- https://github.com/yownas/shift-attention
-- https://github.com/amotile/stable-diffusion-backend/tree/master/src/process/implementations/automatic1111_scripts
+- Prompt Travel: https://github.com/Kahsolt/stable-diffusion-webui-prompt-travel
+- Shift Attention: https://github.com/yownas/shift-attention
+- Prompt Blending: https://github.com/amotile/stable-diffusion-backend/tree/master/src/process/implementations/automatic1111_scripts
