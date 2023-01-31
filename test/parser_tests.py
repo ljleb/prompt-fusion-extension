@@ -1,13 +1,9 @@
-import sys
-sys.path.append('..')
-
-
 from lib_prompt_fusion.prompt_parser import parse_expression
 from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 
 
-def run_parser_tests(total_steps=100):
-    for i, (given, expected) in enumerate(parse_test_cases):
+def run_functional_tests(total_steps=100):
+    for i, (given, expected) in enumerate(functional_parse_test_cases):
         try:
             expr = parse_expression(given)
             tensor_builder = InterpolationTensorBuilder()
@@ -24,7 +20,7 @@ def run_parser_tests(total_steps=100):
             raise e
 
 
-parse_test_cases = [
+functional_parse_test_cases = [
     ('single',)*2,
     ('some space separated text',)*2,
     ('(legacy weighted prompt:-2.1)',)*2,
@@ -76,5 +72,5 @@ parse_test_cases = [
 ]
 
 
-if __name__ == '__main__':
-    run_parser_tests()
+def run_tests():
+    run_functional_tests()
