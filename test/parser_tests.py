@@ -4,20 +4,17 @@ from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 
 def run_functional_tests(total_steps=100):
     for i, (given, expected) in enumerate(functional_parse_test_cases):
-        try:
-            expr = parse_expression(given)
-            tensor_builder = InterpolationTensorBuilder()
-            expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, dict())
+        expr = parse_expression(given)
+        tensor_builder = InterpolationTensorBuilder()
+        expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, dict())
 
-            actual = tensor_builder.get_prompt_database()
+        actual = tensor_builder.get_prompt_database()
 
-            message = f"parse('{expr}') != "
-            if type(expected) is set:
-                assert set(actual) == expected, f"{message}{expected}"
-            else:
-                assert len(actual) == 1 and actual[0] == expected, f"{message}'{expected}'"
-        except Exception as e:
-            raise e
+        message = f"parse('{expr}') != "
+        if type(expected) is set:
+            assert set(actual) == expected, f"{message}{expected}"
+        else:
+            assert len(actual) == 1 and actual[0] == expected, f"{message}'{expected}'"
 
 
 functional_parse_test_cases = [
