@@ -64,7 +64,8 @@ The following webui releases are officially supported:
 ## Usage
 - Check the [wiki pages](https://github.com/ljleb/fusion/wiki) for the extension documentation.
 
-## Similar projects
+## Related Projects
 
 - https://github.com/Kahsolt/stable-diffusion-webui-prompt-travel
 - https://github.com/yownas/shift-attention
+- https://github.com/amotile/stable-diffusion-backend/tree/master/src/process/implementations/automatic1111_scripts
