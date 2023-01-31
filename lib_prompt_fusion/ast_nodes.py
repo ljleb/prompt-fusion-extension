@@ -89,11 +89,11 @@ class EditingExpression:
 
         tensor_builder.append('[')
         for expr_i, expr in enumerate(self.__expressions):
-            expr_steps_range = (steps_range[0], step) if expr_i == 0 else (step, steps_range[1])
+            expr_steps_range = (steps_range[0], step) if len(self.__expressions) > 1 and expr_i == 0 else (step, steps_range[1])
             expr.extend_tensor(tensor_builder, expr_steps_range, total_steps, context)
             tensor_builder.append(':')
 
-        tensor_builder.append(f'{step}]')
+        tensor_builder.append(f'{step - 1}]')
 
     def __str__(self):
         expressions = ''.join(f'{expr}:' for expr in self.__expressions)
@@ -144,8 +144,10 @@ class WeightInterpolationExpression:
 
             weight = weight_begin + (weight_end - weight_begin) * (i / max(steps_range_size - 1, 1))
             weight_step_expr = WeightedExpression(self.__nested, LiftExpression(weight))
-            weight_step_expr = EditingExpression([weight_step_expr], LiftExpression(step))
-            weight_step_expr = EditingExpression([weight_step_expr, ListExpression([])], LiftExpression(step + 1))
+            if step > steps_range[0]:
+                weight_step_expr = EditingExpression([weight_step_expr], LiftExpression(step))
+            if step + 1 < steps_range[1]:
+                weight_step_expr = EditingExpression([weight_step_expr, ListExpression([])], LiftExpression(step + 1))
 
             weight_step_expr.extend_tensor(tensor_builder, steps_range, total_steps, context)
 

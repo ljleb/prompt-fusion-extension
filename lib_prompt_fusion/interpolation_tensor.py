@@ -13,6 +13,9 @@ class InterpolationTensor:
                 if schedule.end_at_step >= step:
                     return schedule.cond
 
+            # fallback
+            return self.__conditionings_tensor[-1]
+
         interpolation_function, control_points_functions = self.__interpolation_functions[axis]
         if tensor_axes == 1:
             control_points = list(self.__conditionings_tensor)
