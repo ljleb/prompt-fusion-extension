@@ -72,12 +72,6 @@ class ExpressionLarkTransformer(Transformer):
     def and_weight_expr(self, weight):
         return ast.LiftExpression(f':{weight}')
 
-    def step_expr(self, args):
-        args = filter(lambda arg: arg is not None, args)
-
-        # `step + 1` because original language is off by 1
-        return ast.LiftExpression(int(''.join(args)) + 1)
-
     def float_expr(self, args):
         args = filter(lambda arg: arg is not None, args)
         return ast.LiftExpression(float(''.join(args)))
