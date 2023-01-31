@@ -199,6 +199,4 @@ def run_parser_tests(total_steps):
 
 
 if __name__ == '__main__':
-    import sys
-    sys.path.append('.')
     run_parser_tests(total_steps=100)
