@@ -6,7 +6,7 @@ from lib_prompt_fusion.prompt_parser import parse_expression
 from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 
 
-def run_parser_tests(total_steps):
+def run_parser_tests(total_steps=100):
     for i, (given, expected) in enumerate(parse_test_cases):
         try:
             expr = parse_expression(given)
@@ -72,4 +72,4 @@ parse_test_cases = [
 
 
 if __name__ == '__main__':
-    run_parser_tests(total_steps=100)
+    run_parser_tests()
