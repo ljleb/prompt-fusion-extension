@@ -1,9 +1,4 @@
-if __name__ == '__main__':
-    import sys
-    sys.path.append('.')
-
 import lib_prompt_fusion.ast_nodes as ast
-from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 import re
 from lark import lark, v_args, Transformer
 
@@ -127,70 +122,3 @@ parse_expression = expr_parser.parse
 
 def parse_prompt(prompt):
     return parse_expression(prompt.lstrip())
-
-
-def run_parser_tests(total_steps):
-    for i, prompt in enumerate([
-        ('single',)*2,
-        ('some space separated text',)*2,
-        ('(legacy weighted prompt:-2.1)',)*2,
-        ('mixed (legacy weight:3.6) and text',)*2,
-        ('legacy [range begin:0] thingy',)*2,
-        ('legacy [range end::3] thingy',)*2,
-        ('legacy [[nested range::3]:2] thingy',)*2,
-        ('legacy [[nested range:2]::3] thingy',)*2,
-        ('sugar [range:,abc:3] thingy',)*2,
-        ('sugar [[(weight interpolation:0,12):0]::1] thingy', 'sugar [[(weight interpolation:0.0):0]::1] thingy'),
-        ('sugar [[(weight interpolation:0,12):0]::2] thingy', 'sugar [[[(weight interpolation:0.0)::1][(weight interpolation:12.0):1]:0]::2] thingy'),
-        ('sugar [[(weight interpolation:0,12):0]::3] thingy', 'sugar [[[(weight interpolation:0.0)::1][[(weight interpolation:6.0):1]::2][(weight interpolation:12.0):2]:0]::3] thingy'),
-        ('legacy [from:to:2] thingy',)*2,
-        ('legacy [negative weight]',)*2,
-        ('legacy (positive weight)',)*2,
-        ('[abc:1girl:2]',)*2,
-        ('1girl',)*2,
-        ('dashes-in-text',)*2,
-        ('text, separated with, comas',)*2,
-        ('{prompt}',)*2,
-        ('[abc|def ghi|jkl]',)*2,
-        ('merging this AND with this',)*2,
-        ('$a = (prompt value:1) $a', '(prompt value:1.0)'),
-        ('$a = (prompt value:1) $b = $a $b', '(prompt value:1.0)'),
-        (r'\:', ':'),
-        ('a [b:c:-1, 10] d', {'a b d', 'a c d'}),
-        ('a [b:c:5, 6] d', {'a b d', 'a c d'}),
-        ('a [b:c:0.25, 0.5] d', {'a b d', 'a c d'}),
-        ('a [b:c:.25, .5] d', {'a b d', 'a c d'}),
-        ('a [b:c:,] d', {'a b d', 'a c d'}),
-        ('0[1.0:1.1:,]2[3.0:3.1:,]4', {'0 1.0 2 3.0 4', '0 1.1 2 3.0 4', '0 1.0 2 3.1 4', '0 1.1 2 3.1 4'}),
-        ('0[1.0:1.1:1.2:,.5,]2[3.0:3.1:,]4', {
-            '0 1.0 2 3.0 4', '0 1.0 2 3.1 4',
-            '0 1.1 2 3.0 4', '0 1.1 2 3.1 4',
-            '0 1.2 2 3.0 4', '0 1.2 2 3.1 4',
-        }),
-        ('[0.0:0.1:,][1.0:1.1:,][2.0:2.1:,]', {
-            '0.0 1.0 2.0', '0.0 1.0 2.1',
-            '0.1 1.0 2.0', '0.1 1.0 2.1',
-            '0.0 1.1 2.0', '0.0 1.1 2.1',
-            '0.1 1.1 2.0', '0.1 1.1 2.1',
-        }),
-        ('[top level:interpolatin:lik a pro:1,3,5: linear]', {'top level', 'interpolatin', 'lik a pro'}),
-    ]):
-        try:
-            expr = parse_expression(prompt[0])
-            tensor_builder = InterpolationTensorBuilder()
-            expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, dict())
-
-            actual = tensor_builder.get_prompt_database()
-
-            if type(prompt[1]) is set:
-                message = f"parse('{expr}') != {prompt[1]}"
-                assert set(actual) == prompt[1], message
-            else:
-                message = f"parse('{expr}') != '{prompt[1]}'"
-                assert len(actual) == 1 and actual[0] == prompt[1], message
-        except Exception as e:
-            raise e
-
-
-if __name__ == '__main__':
-    run_parser_tests(total_steps=100)
