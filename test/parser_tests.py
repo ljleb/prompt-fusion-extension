@@ -68,6 +68,11 @@ parse_test_cases = [
         '0.1 1.1 2.0', '0.1 1.1 2.1',
     }),
     ('[top level:interpolatin:lik a pro:1,3,5: linear]', {'top level', 'interpolatin', 'lik a pro'}),
+    ('[[nested:expr:,]:abc:,]', {'nested', 'expr', 'abc'}),
+    ('[(nested attention:2.0):abc:,]', {'(nested attention:2.0)', 'abc'}),
+    ('[[nested editing:15]:abc:,]', {'[nested editing:15]', 'abc'}),
+    ('[[nested interpolation:abc:,]:12]', {'[nested interpolation:12]', '[abc:12]'}),
+    ('[[nested interpolation:abc:,]::7]', {'[nested interpolation::7]', '[abc::7]'}),
 ]
 
 
