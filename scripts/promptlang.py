@@ -9,6 +9,7 @@ from lib_prompt_fusion.hijacker import ModuleHijacker
 from lib_prompt_fusion import empty_cond
 from modules import prompt_parser, script_callbacks
 import torch
+import gradio as gr
 
 
 fusion_hijacker_attribute = '__fusion_hijacker'
@@ -18,8 +19,20 @@ prompt_parser_hijacker = ModuleHijacker.install_or_get(
     register_uninstall=script_callbacks.on_script_unloaded)
 
 
+_fusion_enabled = True
+
+
+def _toggle_fusion_enabled(should_enable):
+    global _fusion_enabled
+    _fusion_enabled = should_enable
+
+
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
 def _hijacked_get_learned_conditioning(model, prompts, total_steps, original_function):
+    global _fusion_enabled
+    if not _fusion_enabled:
+        return original_function(model, prompts, total_steps)
+
     empty_cond.init(model)
 
     tensor_builders = _parse_tensor_builders(prompts, total_steps)
@@ -91,10 +104,18 @@ def _sample_tensor_schedules(tensor, steps):
 
 class FusionScript(scripts.Script):
     def title(self):
-        return "fusion"
+        return 'fusion'
 
     def show(self, is_img2img):
         return scripts.AlwaysVisible
+
+    def ui(self, is_img2img):
+        with gr.Group():
+            with gr.Accordion("Prompt Fusion", open=False):
+                enabled_checkbox = gr.Checkbox(True, label='Enabled')
+                enabled_checkbox.change(fn=_toggle_fusion_enabled, inputs=enabled_checkbox)
+
+        return [enabled_checkbox]
 
     def run(self, p, *args):
         pass
