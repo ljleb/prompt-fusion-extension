@@ -19,8 +19,8 @@ prompt_parser_hijacker = ModuleHijacker.install_or_get(
 
 
 def on_ui_settings():
-    section = ('prompt-fusion', "Prompt Fusion")
-    shared.opts.add_option("prompt_fusion_enabled", shared.OptionInfo(True, "Enabled", section=section))
+    section = ('prompt-fusion', 'Prompt Fusion')
+    shared.opts.add_option('prompt_fusion_enabled', shared.OptionInfo(True, 'Enabled', section=section))
 
 
 script_callbacks.on_ui_settings(on_ui_settings)
