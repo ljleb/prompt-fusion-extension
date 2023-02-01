@@ -26,10 +26,10 @@ The attention interpolation feature is similar to [Shift Attention](https://gith
 
 ### 1. Influencing the beginning of the sampling process
 
-Interpolate linearly (by default) from `lion` (step 0) to `bird` (step 7) to `girl` (step 10), and stay at `girl` for the rest of the sampling steps:
+Interpolate linearly (by default) from `lion` (step 0) to `bird` (step 8) to `girl` (step 11), and stay at `girl` for the rest of the sampling steps:
 
 ```
-[lion:bird:girl: , 6, 9]
+[lion:bird:girl: , 7, 10]
 ```
 
 ![curve1](https://user-images.githubusercontent.com/32277961/214725976-b72bafc6-0c5d-4491-9c95-b73da41da082.gif)
