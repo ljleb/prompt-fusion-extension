@@ -7,7 +7,7 @@ from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 from lib_prompt_fusion.prompt_parser import parse_prompt
 from lib_prompt_fusion.hijacker import ModuleHijacker
 from lib_prompt_fusion import empty_cond
-from modules import prompt_parser, script_callbacks
+from modules import prompt_parser, script_callbacks, shared
 import torch
 
 
@@ -18,8 +18,19 @@ prompt_parser_hijacker = ModuleHijacker.install_or_get(
     register_uninstall=script_callbacks.on_script_unloaded)
 
 
+def on_ui_settings():
+    section = ('prompt-fusion', 'Prompt Fusion')
+    shared.opts.add_option('prompt_fusion_enabled', shared.OptionInfo(True, 'Enabled', section=section))
+
+
+script_callbacks.on_ui_settings(on_ui_settings)
+
+
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
 def _hijacked_get_learned_conditioning(model, prompts, total_steps, original_function):
+    if not shared.opts.prompt_fusion_enabled:
+        return original_function(model, prompts, total_steps)
+
     empty_cond.init(model)
 
     tensor_builders = _parse_tensor_builders(prompts, total_steps)
@@ -91,7 +102,7 @@ def _sample_tensor_schedules(tensor, steps):
 
 class FusionScript(scripts.Script):
     def title(self):
-        return "fusion"
+        return 'fusion'
 
     def show(self, is_img2img):
         return scripts.AlwaysVisible

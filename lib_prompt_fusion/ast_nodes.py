@@ -62,7 +62,7 @@ class InterpolationExpression:
         }[self.__function_name]
 
         def steps_scale_t(t, conditionings):
-            scaled_t = (t * total_steps - steps[0]) / (steps[-1] - steps[0])
+            scaled_t = (t * total_steps - steps[0]) / max(1, steps[-1] - steps[0])
             scaled_t = scale_t(scaled_t, steps)
             return interpolation_function(scaled_t, conditionings)
 

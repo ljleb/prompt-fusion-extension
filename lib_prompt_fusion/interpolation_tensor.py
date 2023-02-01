@@ -14,7 +14,7 @@ class InterpolationTensor:
                     return schedule.cond
 
             # fallback
-            return self.__conditionings_tensor[-1]
+            return self.__conditionings_tensor[-1].cond
 
         interpolation_function, control_points_functions = self.__interpolation_functions[axis]
         if tensor_axes == 1:
