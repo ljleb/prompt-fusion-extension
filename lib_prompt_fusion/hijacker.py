@@ -23,6 +23,8 @@ class ModuleHijacker:
         for attribute, original_function in self.__original_functions.items():
             setattr(self.__module, attribute, original_function)
 
+        self.__original_functions.clear()
+
     @staticmethod
     def install_or_get(module, hijacker_attribute, register_uninstall=lambda _callback: None):
         if not hasattr(module, hijacker_attribute):
