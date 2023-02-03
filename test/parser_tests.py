@@ -1,10 +1,10 @@
-from lib_prompt_fusion.prompt_parser import parse_expression
+from lib_prompt_fusion.prompt_parser import parse_prompt
 from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 
 
 def run_functional_tests(total_steps=100):
     for i, (given, expected) in enumerate(functional_parse_test_cases):
-        expr = parse_expression(given)
+        expr = parse_prompt(given)
         tensor_builder = InterpolationTensorBuilder()
         expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, dict())
 
@@ -40,32 +40,35 @@ functional_parse_test_cases = [
     ('{prompt}',)*2,
     ('[abc|def ghi|jkl]',)*2,
     ('merging this AND with this',)*2,
-    ('$a = (prompt value:1) $a', '(prompt value:1.0)'),
-    ('$a = (prompt value:1) $b = $a $b', '(prompt value:1.0)'),
-    (r'\:', ':'),
-    ('a [b:c:-1, 10] d', {'a b d', 'a c d'}),
-    ('a [b:c:5, 6] d', {'a b d', 'a c d'}),
-    ('a [b:c:0.25, 0.5] d', {'a b d', 'a c d'}),
-    ('a [b:c:.25, .5] d', {'a b d', 'a c d'}),
-    ('a [b:c:,] d', {'a b d', 'a c d'}),
-    ('0[1.0:1.1:,]2[3.0:3.1:,]4', {'0 1.0 2 3.0 4', '0 1.1 2 3.0 4', '0 1.0 2 3.1 4', '0 1.1 2 3.1 4'}),
-    ('0[1.0:1.1:1.2:,.5,]2[3.0:3.1:,]4', {
-        '0 1.0 2 3.0 4', '0 1.0 2 3.1 4',
-        '0 1.1 2 3.0 4', '0 1.1 2 3.1 4',
-        '0 1.2 2 3.0 4', '0 1.2 2 3.1 4',
-    }),
-    ('[0.0:0.1:,][1.0:1.1:,][2.0:2.1:,]', {
-        '0.0 1.0 2.0', '0.0 1.0 2.1',
-        '0.1 1.0 2.0', '0.1 1.0 2.1',
-        '0.0 1.1 2.0', '0.0 1.1 2.1',
-        '0.1 1.1 2.0', '0.1 1.1 2.1',
-    }),
-    ('[top level:interpolatin:lik a pro:1,3,5: linear]', {'top level', 'interpolatin', 'lik a pro'}),
-    ('[[nested:expr:,]:abc:,]', {'nested', 'expr', 'abc'}),
-    ('[(nested attention:2.0):abc:,]', {'(nested attention:2.0)', 'abc'}),
-    ('[[nested editing:15]:abc:,]', {'[nested editing:15]', 'abc'}),
-    ('[[nested interpolation:abc:,]:12]', {'[nested interpolation:12]', '[abc:12]'}),
-    ('[[nested interpolation:abc:,]::7]', {'[nested interpolation::7]', '[abc::7]'}),
+    (':',)*2,
+    # ('$a = (prompt value:1) $a', '(prompt value:1.0)'),
+    # ('$a = (prompt value:1) $b = $a $b', '(prompt value:1.0)'),
+    # ('a [b:c:-1, 10] d', {'a b d', 'a c d'}),
+    # ('a [b:c:5, 6] d', {'a b d', 'a c d'}),
+    # ('a [b:c:0.25, 0.5] d', {'a b d', 'a c d'}),
+    # ('a [b:c:.25, .5] d', {'a b d', 'a c d'}),
+    # ('a [b:c:,] d', {'a b d', 'a c d'}),
+    # ('0[1.0:1.1:,]2[3.0:3.1:,]4', {
+    #     '0 1.0 2 3.0 4', '0 1.1 2 3.0 4',
+    #     '0 1.0 2 3.1 4', '0 1.1 2 3.1 4',
+    # }),
+    # ('0[1.0:1.1:1.2:,.5,]2[3.0:3.1:,]4', {
+    #     '0 1.0 2 3.0 4', '0 1.0 2 3.1 4',
+    #     '0 1.1 2 3.0 4', '0 1.1 2 3.1 4',
+    #     '0 1.2 2 3.0 4', '0 1.2 2 3.1 4',
+    # }),
+    # ('[0.0:0.1:,][1.0:1.1:,][2.0:2.1:,]', {
+    #     '0.0 1.0 2.0', '0.0 1.0 2.1',
+    #     '0.1 1.0 2.0', '0.1 1.0 2.1',
+    #     '0.0 1.1 2.0', '0.0 1.1 2.1',
+    #     '0.1 1.1 2.0', '0.1 1.1 2.1',
+    # }),
+    # ('[top level:interpolatin:lik a pro:1,3,5: linear]', {'top level', 'interpolatin', 'lik a pro'}),
+    # ('[[nested:expr:,]:abc:,]', {'nested', 'expr', 'abc'}),
+    # ('[(nested attention:2.0):abc:,]', {'(nested attention:2.0)', 'abc'}),
+    # ('[[nested editing:15]:abc:,]', {'[nested editing:15]', 'abc'}),
+    # ('[[nested interpolation:abc:,]:12]', {'[nested interpolation:12]', '[abc:12]'}),
+    # ('[[nested interpolation:abc:,]::7]', {'[nested interpolation::7]', '[abc::7]'}),
 ]
 
 

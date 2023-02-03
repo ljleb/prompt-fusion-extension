@@ -21,9 +21,6 @@ class ListExpression:
             tensor_builder.append(' ')
             expr_extend_tensor(expression)
 
-    def __str__(self):
-        return ' '.join(f'{expr}:' for expr in self.__expressions)
-
 
 class InterpolationExpression:
     def __init__(self, expressions, steps, function_name=None):
@@ -68,11 +65,6 @@ class InterpolationExpression:
 
         return steps_scale_t
 
-    def __str__(self):
-        expressions = ''.join(f'{expr}:' for expr in self.__expressions)
-        steps = ','.join(str(step) for step in self.__steps)
-        return f'[{expressions}{steps}:{self.__function_name}]'
-
 
 class EditingExpression:
     def __init__(self, expressions, step):
@@ -95,43 +87,42 @@ class EditingExpression:
 
         tensor_builder.append(f'{step - 1}]')
 
-    def __str__(self):
-        expressions = ''.join(f'{expr}:' for expr in self.__expressions)
-        return f'[{expressions}{self.__step}]'
-
 
 class WeightedExpression:
-    def __init__(self, nested, weight=None, positive=True):
+    def __init__(self, nested, weights=None, positive=True):
+        if weights is None:
+            weights = []
+
         self.__nested = nested
         if not positive:
-            assert weight is None
-        self.__weight = weight
+            assert not weights
+
+        assert 0 <= len(weights) <= 2
+        self.__weights = weights
         self.__positive = positive
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
+        if len(self.__weights) >= 2:
+            expr = WeightInterpolationExpression(self.__nested, self.__weights[0], self.__weights[1])
+            expr.extend_tensor(tensor_builder, steps_range, total_steps, context)
+            return
+
         open_bracket, close_bracket = ('(', ')') if self.__positive else ('[', ']')
         tensor_builder.append(open_bracket)
         self.__nested.extend_tensor(tensor_builder, steps_range, total_steps, context)
 
-        if self.__weight is not None:
+        if len(self.__weights) > 0:
             tensor_builder.append(':')
-            self.__weight.extend_tensor(tensor_builder, steps_range, total_steps, context)
+            self.__weights[0].extend_tensor(tensor_builder, steps_range, total_steps, context)
 
         tensor_builder.append(close_bracket)
-
-    def __str__(self):
-        if self.__positive:
-            weight = f':{self.__weight}' if self.__weight is not None else ''
-            return f'({self.__nested}{weight})'
-        else:
-            return f'[{self.__nested}]'
 
 
 class WeightInterpolationExpression:
     def __init__(self, nested, weight_begin, weight_end):
         self.__nested = nested
-        self.__weight_begin = weight_begin if weight_begin is not None else LiftExpression(1.)
-        self.__weight_end = weight_end if weight_end is not None else LiftExpression(1.)
+        self.__weight_begin = weight_begin if weight_begin is not None else LiftExpression(str(1.))
+        self.__weight_end = weight_end if weight_end is not None else LiftExpression(str(1.))
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
         steps_range_size = steps_range[1] - steps_range[0]
@@ -143,16 +134,13 @@ class WeightInterpolationExpression:
             step = i + steps_range[0]
 
             weight = weight_begin + (weight_end - weight_begin) * (i / max(steps_range_size - 1, 1))
-            weight_step_expr = WeightedExpression(self.__nested, LiftExpression(weight))
+            weight_step_expr = WeightedExpression(self.__nested, [LiftExpression(str(weight))])
             if step > steps_range[0]:
-                weight_step_expr = EditingExpression([weight_step_expr], LiftExpression(step))
+                weight_step_expr = EditingExpression([weight_step_expr], LiftExpression(str(step)))
             if step + 1 < steps_range[1]:
-                weight_step_expr = EditingExpression([weight_step_expr, ListExpression([])], LiftExpression(step + 1))
+                weight_step_expr = EditingExpression([weight_step_expr, ListExpression([])], LiftExpression(str(step + 1)))
 
             weight_step_expr.extend_tensor(tensor_builder, steps_range, total_steps, context)
-
-    def __str__(self):
-        return f'({self.__nested}:{self.__weight_begin},{self.__weight_end})'
 
 
 class DeclarationExpression:
@@ -166,9 +154,6 @@ class DeclarationExpression:
         updated_context[self.__symbol] = self.__nested
         self.__expression.extend_tensor(tensor_builder, steps_range, total_steps, updated_context)
 
-    def __str__(self):
-        return f'${self.__symbol} = {self.__nested}\n{self.__expression}'
-
 
 class SubstitutionExpression:
     def __init__(self, symbol):
@@ -177,19 +162,13 @@ class SubstitutionExpression:
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
         context[self.__symbol].extend_tensor(tensor_builder, steps_range, total_steps, context)
 
-    def __str__(self):
-        return f'${self.__symbol}'
-
 
 class LiftExpression:
     def __init__(self, value):
         self.__value = value
 
     def extend_tensor(self, tensor_builder, *_args, **_kwargs):
-        tensor_builder.append(str(self))
-
-    def __str__(self):
-        return str(self.__value)
+        tensor_builder.append(self.__value)
 
 
 def _eval_float(expression, steps_range, total_steps, context):
