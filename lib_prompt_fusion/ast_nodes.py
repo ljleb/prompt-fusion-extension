@@ -41,9 +41,9 @@ class InterpolationExpression:
     def get_interpolation_function(self, steps_range, total_steps, context):
         steps = list(self.__steps)
         if steps[0] is None:
-            steps[0] = LiftExpression(steps_range[0])
+            steps[0] = LiftExpression(str(steps_range[0]))
         if steps[-1] is None:
-            steps[-1] = LiftExpression(steps_range[1])
+            steps[-1] = LiftExpression(str(steps_range[1]))
 
         for i, step in enumerate(steps):
             step = _eval_float(step, steps_range, total_steps, context)
