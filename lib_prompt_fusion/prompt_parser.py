@@ -67,7 +67,10 @@ def parse_positive_attention(prompt, stoppers):
     prompt, expr = parse_list_expression(prompt, set_concat(stoppers, {':', ')'}))
     prompt, weight_exprs = parse_attention_weights(prompt)
     prompt, _ = parse_close_paren(prompt)
-    return ParseResult(prompt=prompt, expr=ast.WeightedExpression(expr, weight_exprs))
+    if len(weight_exprs) >= 2:
+        return ParseResult(prompt=prompt, expr=ast.WeightInterpolationExpression(expr, *weight_exprs[:2]))
+    else:
+        return ParseResult(prompt=prompt, expr=ast.WeightedExpression(expr, *weight_exprs[:1]))
 
 
 def parse_attention_weights(prompt):
