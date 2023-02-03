@@ -56,37 +56,29 @@ def parse_interpolation(prompt, stoppers):
     return ParseResult(prompt=prompt, expr=ast.InterpolationExpression(exprs, steps))
 
 
-def parse_interpolation_function_name(prompt):
-    try:
-        prompt, _ = parse_colon(prompt)
-        return parse_token(prompt, whitespace_tail_regex('|'.join(interpolation_function_names)))
-    except ValueError:
-        return ParseResult(prompt=prompt, expr=None)
-
-
-interpolation_function_names = (
-    'linear',
-    'catmull',
-    'bezier',
-)
-
-
 def parse_interpolation_exprs(prompt, stoppers):
     exprs = []
 
     try:
         while True:
             prompt_tmp, expr = parse_list_expression(prompt, set_concat(stoppers, {':', ']'}))
-            prompt_tmp, _ = parse_colon(prompt_tmp)
-            if prompt_tmp.startswith(interpolation_function_names):
+            if parse_interpolation_function_name(prompt_tmp).expr is not None:
                 raise ValueError
 
-            prompt = prompt_tmp
+            prompt, _ = parse_colon(prompt_tmp)
             exprs.append(expr)
     except ValueError:
         pass
 
     return ParseResult(prompt=prompt, expr=exprs)
+
+
+def parse_interpolation_function_name(prompt):
+    try:
+        prompt, _ = parse_colon(prompt)
+        return parse_token(prompt, whitespace_tail_regex('|'.join(('linear', 'catmull', 'bezier'))))
+    except ValueError:
+        return ParseResult(prompt=prompt, expr=None)
 
 
 def parse_interpolation_steps(prompt):
