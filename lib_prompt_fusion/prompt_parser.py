@@ -51,7 +51,7 @@ def parse_text(prompt, stoppers):
 
 def parse_unrestricted_text(prompt, stoppers):
     stoppers = ''.join(re.escape(stopper) for stopper in stoppers)
-    prompt, expr = parse_token(prompt, whitespace_tail_regex(rf'[^{stoppers}\s]+', stoppers))
+    prompt, expr = parse_token(prompt, whitespace_tail_regex(rf'(?:[^{stoppers}\\\s]|\\.)+', stoppers))
     return ParseResult(prompt=prompt, expr=ast.LiftExpression(expr))
 
 
@@ -257,7 +257,7 @@ def parse_close_paren(prompt, stoppers):
 
 
 def parse_newline(prompt, stoppers):
-    return parse_token(prompt, whitespace_tail_regex(re.escape('\n'), stoppers))
+    return parse_token(prompt, whitespace_tail_regex('\n|$', stoppers))
 
 
 def parse_token(prompt, regex):
