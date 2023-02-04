@@ -72,7 +72,8 @@ functional_parse_test_cases = [
     ('[[nested interpolation:abc:,]::7]', {'[nested interpolation::7]', '[abc::7]'}),
     ('$attention = 1.5\n(prompt:$attention)', '(prompt:1.5)'),
     ('$a = 0\n$b = 12\n[[(prompt:$a,$b):0]::2]', '[[[(prompt:0.0)::1][(prompt:12.0):1]:0]::2]'),
-    ('$a = prompt value\n$b = $a\n$b', 'prompt value'),
+    ('$step = 5\n[legacy:editing:$step]', '[legacy:editing:5]'),
+    ('$begin = 2\n$end = 7\n[prompt:interpolation:$begin, $end]', {'prompt', 'interpolation'}),
 ]
 
 

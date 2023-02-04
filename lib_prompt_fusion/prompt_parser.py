@@ -191,9 +191,13 @@ def parse_attention_weights(prompt, stoppers):
 
 
 def parse_step(prompt, stoppers):
-    prompt, step = parse_float(prompt, stoppers)
-    step = step if 0 < float(step) < 1 else str(float(step)+1)
-    return ParseResult(prompt=prompt, expr=ast.LiftExpression(step))
+    try:
+        prompt, step = parse_float(prompt, stoppers)
+        return ParseResult(prompt=prompt, expr=ast.LiftExpression(step))
+    except ValueError:
+        pass
+
+    return parse_substitution(prompt, stoppers)
 
 
 def parse_weight(prompt, stoppers):

@@ -41,14 +41,16 @@ class InterpolationExpression:
     def get_interpolation_function(self, steps_range, total_steps, context):
         steps = list(self.__steps)
         if steps[0] is None:
-            steps[0] = LiftExpression(str(steps_range[0]))
+            steps[0] = LiftExpression(str(steps_range[0] - 1))
         if steps[-1] is None:
-            steps[-1] = LiftExpression(str(steps_range[1]))
+            steps[-1] = LiftExpression(str(steps_range[1] - 1))
 
         for i, step in enumerate(steps):
             step = _eval_float(step, steps_range, total_steps, context)
             if 0 < step < 1:
                 step *= total_steps
+            else:
+                step += 1
 
             steps[i] = int(step)
 
@@ -76,6 +78,8 @@ class EditingExpression:
         step = _eval_float(self.__step, steps_range, total_steps, context)
         if 0 < step < 1:
             step *= total_steps
+        else:
+            step += 1
 
         step = int(step)
 
@@ -127,9 +131,9 @@ class WeightInterpolationExpression:
             weight = weight_begin + (weight_end - weight_begin) * (i / max(steps_range_size - 1, 1))
             weight_step_expr = WeightedExpression(self.__nested, LiftExpression(str(weight)))
             if step > steps_range[0]:
-                weight_step_expr = EditingExpression([weight_step_expr], LiftExpression(str(step)))
+                weight_step_expr = EditingExpression([weight_step_expr], LiftExpression(str(step - 1)))
             if step + 1 < steps_range[1]:
-                weight_step_expr = EditingExpression([weight_step_expr, ListExpression([])], LiftExpression(str(step + 1)))
+                weight_step_expr = EditingExpression([weight_step_expr, ListExpression([])], LiftExpression(str(step)))
 
             weight_step_expr.extend_tensor(tensor_builder, steps_range, total_steps, context)
 
