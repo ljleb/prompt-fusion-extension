@@ -44,6 +44,8 @@ functional_parse_test_cases = [
     (r'\[escaped square\]',)*2,
     (r'\$var = abc',)*2,
     ('$var = abc', ''),
+    (r'\\$ arst',)*2,
+    (r'$$ arst',)*2,
     ('$a = prompt value\n$a', 'prompt value'),
     ('$a = prompt value\n$b = $a\n$b', 'prompt value'),
     ('$a = (multiline\nprompt\nvalue:1.0)\n$a', '(multiline prompt value:1.0)'),
