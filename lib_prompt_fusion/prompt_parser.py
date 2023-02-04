@@ -23,7 +23,7 @@ def parse_list_expression(prompt, stoppers):
 
 
 def parse_expression(prompt, stoppers):
-    for parse in [parse_restricted_text, parse_positive_attention, parse_negative_attention, parse_editing, parse_interpolation, parse_text]:
+    for parse in _parsers():
         try:
             return parse(prompt, stoppers)
         except ValueError:
@@ -32,22 +32,49 @@ def parse_expression(prompt, stoppers):
     raise ValueError
 
 
-def parse_restricted_text(prompt, stoppers):
-    return parse_text(prompt, set_concat(stoppers, {'[', '('}))
+def _parsers():
+    return (
+        parse_text,
+        parse_declaration,
+        parse_substitution,
+        parse_positive_attention,
+        parse_negative_attention,
+        parse_editing,
+        parse_interpolation,
+        parse_unrestricted_text,
+    )
 
 
 def parse_text(prompt, stoppers):
+    return parse_unrestricted_text(prompt, set_concat(stoppers, {'[', '(', '$'}))
+
+
+def parse_unrestricted_text(prompt, stoppers):
     stoppers = ''.join(re.escape(stopper) for stopper in stoppers)
-    prompt, expr = parse_token(prompt, whitespace_tail_regex(rf'[^{stoppers}\s]+'))
+    prompt, expr = parse_token(prompt, whitespace_tail_regex(rf'[^{stoppers}\s]+', stoppers))
     return ParseResult(prompt=prompt, expr=ast.LiftExpression(expr))
 
 
+def parse_substitution(prompt, stoppers):
+    prompt, symbol = parse_symbol(prompt, stoppers)
+    return ParseResult(prompt=prompt, expr=ast.SubstitutionExpression(symbol))
+
+
+def parse_declaration(prompt, stoppers):
+    prompt, symbol = parse_symbol(prompt, stoppers)
+    prompt, _ = parse_equals(prompt, stoppers)
+    prompt, value = parse_list_expression(prompt, set_concat(stoppers, '\n'))
+    prompt, _ = parse_newline(prompt, stoppers)
+    prompt, expr = parse_list_expression(prompt, stoppers)
+    return ParseResult(prompt=prompt, expr=ast.DeclarationExpression(symbol, value, expr))
+
+
 def parse_interpolation(prompt, stoppers):
-    prompt, _ = parse_open_square(prompt)
+    prompt, _ = parse_open_square(prompt, stoppers)
     prompt, exprs = parse_interpolation_exprs(prompt, stoppers)
-    prompt, steps = parse_interpolation_steps(prompt)
-    prompt, function_name = parse_interpolation_function_name(prompt)
-    prompt, _ = parse_close_square(prompt)
+    prompt, steps = parse_interpolation_steps(prompt, stoppers)
+    prompt, function_name = parse_interpolation_function_name(prompt, stoppers)
+    prompt, _ = parse_close_square(prompt, stoppers)
 
     max_len = min(len(exprs), len(steps))
     exprs = exprs[:max_len]
@@ -61,11 +88,11 @@ def parse_interpolation_exprs(prompt, stoppers):
 
     try:
         while True:
-            prompt_tmp, expr = parse_list_expression(prompt, set_concat(stoppers, {':', ']'}))
-            if parse_interpolation_function_name(prompt_tmp).expr is not None:
+            prompt_tmp, expr = parse_list_expression(prompt, {':', ']'})
+            if parse_interpolation_function_name(prompt_tmp, stoppers).expr is not None:
                 raise ValueError
 
-            prompt, _ = parse_colon(prompt_tmp)
+            prompt, _ = parse_colon(prompt_tmp, stoppers)
             exprs.append(expr)
     except ValueError:
         pass
@@ -73,31 +100,31 @@ def parse_interpolation_exprs(prompt, stoppers):
     return ParseResult(prompt=prompt, expr=exprs)
 
 
-def parse_interpolation_function_name(prompt):
+def parse_interpolation_function_name(prompt, stoppers):
     try:
-        prompt, _ = parse_colon(prompt)
-        return parse_token(prompt, whitespace_tail_regex('|'.join(('linear', 'catmull', 'bezier'))))
+        prompt, _ = parse_colon(prompt, stoppers)
+        return parse_token(prompt, whitespace_tail_regex('|'.join(('linear', 'catmull', 'bezier')), stoppers))
     except ValueError:
         return ParseResult(prompt=prompt, expr=None)
 
 
-def parse_interpolation_steps(prompt):
+def parse_interpolation_steps(prompt, stoppers):
     exprs = []
 
     try:
         while True:
-            prompt, expr = parse_interpolation_step(prompt)
+            prompt, expr = parse_interpolation_step(prompt, stoppers)
             exprs.append(expr)
-            prompt, _ = parse_comma(prompt)
+            prompt, _ = parse_comma(prompt, stoppers)
     except ValueError:
         pass
 
     return ParseResult(prompt=prompt, expr=exprs)
 
 
-def parse_interpolation_step(prompt):
+def parse_interpolation_step(prompt, stoppers):
     try:
-        return parse_step(prompt)
+        return parse_step(prompt, stoppers)
     except ValueError:
         pass
 
@@ -108,10 +135,10 @@ def parse_interpolation_step(prompt):
 
 
 def parse_editing(prompt, stoppers):
-    prompt, _ = parse_open_square(prompt)
+    prompt, _ = parse_open_square(prompt, stoppers)
     prompt, exprs = parse_editing_exprs(prompt, stoppers)
-    prompt, step = parse_step(prompt)
-    prompt, _ = parse_close_square(prompt)
+    prompt, step = parse_step(prompt, stoppers)
+    prompt, _ = parse_close_square(prompt, stoppers)
     return ParseResult(prompt=prompt, expr=ast.EditingExpression(exprs, step))
 
 
@@ -120,8 +147,8 @@ def parse_editing_exprs(prompt, stoppers):
 
     try:
         for _ in range(2):
-            prompt_tmp, expr = parse_list_expression(prompt, set_concat(stoppers, {':', ']'}))
-            prompt, _ = parse_colon(prompt_tmp)
+            prompt_tmp, expr = parse_list_expression(prompt, {':', ']'})
+            prompt, _ = parse_colon(prompt_tmp, stoppers)
             exprs.append(expr)
     except ValueError:
         pass
@@ -130,76 +157,103 @@ def parse_editing_exprs(prompt, stoppers):
 
 
 def parse_negative_attention(prompt, stoppers):
-    prompt, _ = parse_open_square(prompt)
+    prompt, _ = parse_open_square(prompt, stoppers)
     prompt, expr = parse_list_expression(prompt, set_concat(stoppers, {':', ']'}))
-    prompt, _ = parse_close_square(prompt)
+    prompt, _ = parse_close_square(prompt, stoppers)
     return ParseResult(prompt=prompt, expr=ast.WeightedExpression(expr, positive=False))
 
 
 def parse_positive_attention(prompt, stoppers):
-    prompt, _ = parse_open_paren(prompt)
-    prompt, expr = parse_list_expression(prompt, set_concat(stoppers, {':', ')'}))
-    prompt, weight_exprs = parse_attention_weights(prompt)
-    prompt, _ = parse_close_paren(prompt)
+    prompt, _ = parse_open_paren(prompt, stoppers)
+    prompt, expr = parse_list_expression(prompt, {':', ')'})
+    prompt, weight_exprs = parse_attention_weights(prompt, stoppers)
+    prompt, _ = parse_close_paren(prompt, stoppers)
     if len(weight_exprs) >= 2:
         return ParseResult(prompt=prompt, expr=ast.WeightInterpolationExpression(expr, *weight_exprs[:2]))
     else:
         return ParseResult(prompt=prompt, expr=ast.WeightedExpression(expr, *weight_exprs[:1]))
 
 
-def parse_attention_weights(prompt):
+def parse_attention_weights(prompt, stoppers):
     weights = []
     try:
-        prompt, _ = parse_colon(prompt)
+        prompt, _ = parse_colon(prompt, stoppers)
     except ValueError:
         return ParseResult(prompt=prompt, expr=weights)
 
     while True:
         try:
-            prompt, weight_expr = parse_weight(prompt)
+            prompt, weight_expr = parse_weight(prompt, stoppers)
             weights.append(weight_expr)
-            prompt, _ = parse_comma(prompt)
+            prompt, _ = parse_comma(prompt, stoppers)
         except ValueError:
             return ParseResult(prompt=prompt, expr=weights)
 
 
-def parse_step(prompt):
-    prompt, step = parse_float(prompt)
+def parse_step(prompt, stoppers):
+    prompt, step = parse_float(prompt, stoppers)
     step = step if 0 < float(step) < 1 else str(float(step)+1)
     return ParseResult(prompt=prompt, expr=ast.LiftExpression(step))
 
 
-def parse_weight(prompt):
-    prompt, step = parse_float(prompt)
-    return ParseResult(prompt=prompt, expr=ast.LiftExpression(step))
+def parse_weight(prompt, stoppers):
+    try:
+        prompt, step = parse_float(prompt, stoppers)
+        return ParseResult(prompt=prompt, expr=ast.LiftExpression(step))
+    except ValueError:
+        pass
+
+    return parse_substitution(prompt, stoppers)
 
 
-def parse_float(prompt):
-    return parse_token(prompt, whitespace_tail_regex(r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)'))
+def parse_symbol(prompt, stoppers):
+    prompt, _ = parse_dollar(prompt)
+    return parse_symbol_text(prompt, stoppers)
 
 
-def parse_comma(prompt):
-    return parse_token(prompt, whitespace_tail_regex(','))
+def parse_symbol_text(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex('[a-zA-Z_][a-zA-Z0-9_]*', stoppers))
 
 
-def parse_colon(prompt):
-    return parse_token(prompt, whitespace_tail_regex(r'\:'))
+def parse_float(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)', stoppers))
 
 
-def parse_open_square(prompt):
-    return parse_token(prompt, whitespace_tail_regex(r'\['))
+def parse_dollar(prompt):
+    dollar_sign = re.escape('$')
+    return parse_token(prompt, f'({dollar_sign})')
 
 
-def parse_close_square(prompt):
-    return parse_token(prompt, whitespace_tail_regex(r'\]'))
+def parse_equals(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(re.escape('='), stoppers))
 
 
-def parse_open_paren(prompt):
-    return parse_token(prompt, whitespace_tail_regex(r'\('))
+def parse_comma(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(re.escape(','), stoppers))
 
 
-def parse_close_paren(prompt):
-    return parse_token(prompt, whitespace_tail_regex(r'\)'))
+def parse_colon(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(re.escape(':'), stoppers))
+
+
+def parse_open_square(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(re.escape('['), stoppers))
+
+
+def parse_close_square(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(re.escape(']'), stoppers))
+
+
+def parse_open_paren(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(re.escape('('), stoppers))
+
+
+def parse_close_paren(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(re.escape(')'), stoppers))
+
+
+def parse_newline(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(re.escape('\n'), stoppers))
 
 
 def parse_token(prompt, regex):
@@ -210,7 +264,10 @@ def parse_token(prompt, regex):
     return ParseResult(prompt=prompt[len(match.group()):], expr=match.groups()[-1])
 
 
-def whitespace_tail_regex(regex):
+def whitespace_tail_regex(regex, stoppers):
+    if '\n' in stoppers:
+        return rf'({regex})[ \t\f\r]*'
+
     return rf'({regex})\s*'
 
 

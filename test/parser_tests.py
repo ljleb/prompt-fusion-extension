@@ -10,11 +10,10 @@ def run_functional_tests(total_steps=100):
 
         actual = tensor_builder.get_prompt_database()
 
-        message = f"parse('{expr}') != "
         if type(expected) is set:
-            assert set(actual) == expected, f"{message}{expected}"
+            assert set(actual) == expected, f"{actual} != {expected}"
         else:
-            assert len(actual) == 1 and actual[0] == expected, f"{message}'{expected}'"
+            assert len(actual) == 1 and actual[0] == expected, f"'{actual[0]}' != '{expected}'"
 
 
 functional_parse_test_cases = [
@@ -41,8 +40,10 @@ functional_parse_test_cases = [
     ('[abc|def ghi|jkl]',)*2,
     ('merging this AND with this',)*2,
     (':',)*2,
-    # ('$a = (prompt value:1) $a', '(prompt value:1.0)'),
-    # ('$a = (prompt value:1) $b = $a $b', '(prompt value:1.0)'),
+    ('$a = prompt value\n$a', 'prompt value'),
+    ('$a = prompt value\n$b = $a\n$b', 'prompt value'),
+    ('$a = (multiline\nprompt\nvalue:1.0)\n$a', '(multiline prompt value:1.0)'),
+    ('$a = ($aa = nested variable\nmultiline\n$aa:1.0)\n$a', '(multiline nested variable:1.0)'),
     ('a [b:c:-1, 10] d', {'a b d', 'a c d'}),
     ('a [b:c:5, 6] d', {'a b d', 'a c d'}),
     ('a [b:c:0.25, 0.5] d', {'a b d', 'a c d'}),
@@ -69,6 +70,9 @@ functional_parse_test_cases = [
     ('[[nested editing:15]:abc:,]', {'[nested editing:15]', 'abc'}),
     ('[[nested interpolation:abc:,]:12]', {'[nested interpolation:12]', '[abc:12]'}),
     ('[[nested interpolation:abc:,]::7]', {'[nested interpolation::7]', '[abc::7]'}),
+    ('$attention = 1.5\n(prompt:$attention)', '(prompt:1.5)'),
+    ('$a = 0\n$b = 12\n[[(prompt:$a,$b):0]::2]', '[[[(prompt:0.0)::1][(prompt:12.0):1]:0]::2]'),
+    ('$a = prompt value\n$b = $a\n$b', 'prompt value'),
 ]
 
 
