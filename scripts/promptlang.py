@@ -100,9 +100,9 @@ def _sample_tensor_schedules(tensor, steps):
     return schedules
 
 
-class FusionScript(scripts.Script):
+class PromptFusionScript(scripts.Script):
     def title(self):
-        return 'fusion'
+        return 'Prompt Fusion'
 
     def show(self, is_img2img):
         return scripts.AlwaysVisible
