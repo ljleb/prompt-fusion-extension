@@ -58,16 +58,64 @@ def parse_unrestricted_text(prompt, stoppers):
 
 def parse_substitution(prompt, stoppers):
     prompt, symbol = parse_symbol(prompt, stoppers)
-    return ParseResult(prompt=prompt, expr=ast.SubstitutionExpression(symbol))
+    prompt, arguments = parse_arguments(prompt, stoppers)
+    return ParseResult(prompt=prompt, expr=ast.SubstitutionExpression(symbol, arguments))
+
+
+def parse_arguments(prompt, stoppers):
+    try:
+        prompt, _ = parse_open_paren(prompt, stoppers)
+        prompt, arguments = parse_inner_arguments(prompt, stoppers)
+        prompt, _ = parse_close_paren(prompt, stoppers)
+    except ValueError:
+        arguments = []
+    return ParseResult(prompt=prompt, expr=arguments)
+
+
+def parse_inner_arguments(prompt, stoppers):
+    arguments = []
+    try:
+        while True:
+            prompt, arg = parse_list_expression(prompt, {',', ')'})
+            arguments.append(arg)
+            prompt, _ = parse_comma(prompt, stoppers)
+    except ValueError:
+        pass
+
+    return ParseResult(prompt=prompt, expr=arguments)
 
 
 def parse_declaration(prompt, stoppers):
     prompt, symbol = parse_symbol(prompt, stoppers)
+    prompt, parameters = parse_parameters(prompt, stoppers)
     prompt, _ = parse_equals(prompt, stoppers)
     prompt, value = parse_list_expression(prompt, set_concat(stoppers, '\n'))
     prompt, _ = parse_newline(prompt, stoppers)
     prompt, expr = parse_list_expression(prompt, stoppers)
-    return ParseResult(prompt=prompt, expr=ast.DeclarationExpression(symbol, value, expr))
+    return ParseResult(prompt=prompt, expr=ast.DeclarationExpression(symbol, parameters, value, expr))
+
+
+def parse_parameters(prompt, stoppers):
+    try:
+        prompt, _ = parse_open_paren(prompt, stoppers)
+        prompt, parameters = parse_inner_parameters(prompt, stoppers)
+        prompt, _ = parse_close_paren(prompt, stoppers)
+    except ValueError:
+        parameters = []
+    return ParseResult(prompt=prompt, expr=parameters)
+
+
+def parse_inner_parameters(prompt, stoppers):
+    parameters = []
+    try:
+        while True:
+            prompt, param = parse_symbol(prompt, stoppers)
+            parameters.append(param)
+            prompt, _ = parse_comma(prompt, stoppers)
+    except ValueError:
+        pass
+
+    return ParseResult(prompt=prompt, expr=parameters)
 
 
 def parse_interpolation(prompt, stoppers):

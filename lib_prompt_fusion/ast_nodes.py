@@ -139,23 +139,29 @@ class WeightInterpolationExpression:
 
 
 class DeclarationExpression:
-    def __init__(self, symbol, nested, expression):
+    def __init__(self, symbol, parameters, nested, expression):
         self.__symbol = symbol
         self.__nested = nested
         self.__expression = expression
+        self.__parameters = parameters
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
         updated_context = dict(context)
-        updated_context[self.__symbol] = self.__nested
+        updated_context[self.__symbol] = (self.__nested, self.__parameters)
         self.__expression.extend_tensor(tensor_builder, steps_range, total_steps, updated_context)
 
 
 class SubstitutionExpression:
-    def __init__(self, symbol):
+    def __init__(self, symbol, arguments):
         self.__symbol = symbol
+        self.__arguments = arguments
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
-        context[self.__symbol].extend_tensor(tensor_builder, steps_range, total_steps, context)
+        updated_context = dict(context)
+        nested, parameters = context[self.__symbol]
+        for argument, parameter in zip(self.__arguments, parameters):
+            updated_context[parameter] = argument, []
+        nested.extend_tensor(tensor_builder, steps_range, total_steps, updated_context)
 
 
 class LiftExpression:
