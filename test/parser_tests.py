@@ -80,6 +80,10 @@ functional_parse_test_cases = [
     ('$a = 0\n$b = 12\n[[(prompt:$a,$b):0]::2]', '[[[(prompt:0.0)::1][(prompt:12.0):1]:0]::2]'),
     ('$step = 5\n[legacy:editing:$step]', '[legacy:editing:5]'),
     ('$begin = 2\n$end = 7\n[prompt:interpolation:$begin, $end]', {'prompt', 'interpolation'}),
+    ('$a($b, $c) = prompt with $b, prompt with $c\n$a(cat, dog)', 'prompt with cat , prompt with dog'),
+    ('$a($b) = prompt with $b\n$c($d) = yeay $a($d)\n$c(dog)', 'yeay prompt with dog'),
+    ('$a = a lot of animals\n$b($c) = I love $c\n$b($a)', 'I love a lot of animals'),
+    ('$a($b) = prompt with $b\n$c($d) = yeay $d\n$a($c(dog))', 'prompt with yeay dog'),
 ]
 
 
