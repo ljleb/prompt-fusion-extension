@@ -58,13 +58,18 @@ def parse_unrestricted_text(prompt, stoppers):
 
 def parse_substitution(prompt, stoppers):
     prompt, symbol = parse_symbol(prompt, stoppers)
+    prompt, arguments = parse_arguments(prompt, stoppers)
+    return ParseResult(prompt=prompt, expr=ast.SubstitutionExpression(symbol, arguments))
+
+
+def parse_arguments(prompt, stoppers):
     try:
         prompt, _ = parse_open_paren(prompt, stoppers)
         prompt, arguments = parse_inner_arguments(prompt, stoppers)
         prompt, _ = parse_close_paren(prompt, stoppers)
     except ValueError:
         arguments = []
-    return ParseResult(prompt=prompt, expr=ast.SubstitutionExpression(symbol, arguments))
+    return ParseResult(prompt=prompt, expr=arguments)
 
 
 def parse_inner_arguments(prompt, stoppers):
@@ -78,6 +83,16 @@ def parse_inner_arguments(prompt, stoppers):
         pass
 
     return ParseResult(prompt=prompt, expr=arguments)
+
+
+def parse_declaration(prompt, stoppers):
+    prompt, symbol = parse_symbol(prompt, stoppers)
+    prompt, parameters = parse_parameters(prompt, stoppers)
+    prompt, _ = parse_equals(prompt, stoppers)
+    prompt, value = parse_list_expression(prompt, set_concat(stoppers, '\n'))
+    prompt, _ = parse_newline(prompt, stoppers)
+    prompt, expr = parse_list_expression(prompt, stoppers)
+    return ParseResult(prompt=prompt, expr=ast.DeclarationExpression(symbol, parameters, value, expr))
 
 
 def parse_parameters(prompt, stoppers):
@@ -101,16 +116,6 @@ def parse_inner_parameters(prompt, stoppers):
         pass
 
     return ParseResult(prompt=prompt, expr=parameters)
-
-
-def parse_declaration(prompt, stoppers):
-    prompt, symbol = parse_symbol(prompt, stoppers)
-    prompt, parameters = parse_parameters(prompt, stoppers)
-    prompt, _ = parse_equals(prompt, stoppers)
-    prompt, value = parse_list_expression(prompt, set_concat(stoppers, '\n'))
-    prompt, _ = parse_newline(prompt, stoppers)
-    prompt, expr = parse_list_expression(prompt, stoppers)
-    return ParseResult(prompt=prompt, expr=ast.DeclarationExpression(symbol, parameters, value, expr))
 
 
 def parse_interpolation(prompt, stoppers):
