@@ -100,12 +100,35 @@ def _sample_tensor_schedules(tensor, steps):
     return schedules
 
 
-class PromptFusionScript(scripts.Script):
-    def title(self):
-        return 'Prompt Fusion'
+if __name__ == '__main__':
+    import turtle as tr
+    from lib_prompt_fusion.geometries import curved_geometry, linear_geometry
+    from lib_prompt_fusion.linear import compute_linear
+    from lib_prompt_fusion.bezier import compute_on_curve_with_points
+    size = 30
+    turtle_tool = tr.Turtle()
+    turtle_tool.speed(10)
+    turtle_tool.up()
 
-    def show(self, is_img2img):
-        return scripts.AlwaysVisible
+    points = torch.Tensor([[-2., .1], [2., .1]]) * 100
 
-    def run(self, p, *args):
-        pass
+    for point in points:
+        turtle_tool.goto([int(point[0]), int(point[1])])
+        turtle_tool.dot(5, "red")
+
+    turtle_tool.goto([0,0])
+    turtle_tool.dot(5, "red")
+
+    for i in range(size):
+        t = i / size
+        point = compute_linear(curved_geometry)(t, points)
+        try:
+            turtle_tool.goto([int(point[0]), int(point[1])])
+            turtle_tool.dot()
+            print(point)
+        except ValueError:
+            pass
+
+    turtle_tool.goto(100000, 100000)
+    turtle_tool.dot()
+    tr.done()
