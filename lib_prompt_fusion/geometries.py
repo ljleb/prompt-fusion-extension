@@ -11,9 +11,7 @@ def curved_geometry(t, control_points):
 
     angle = math.acos(similarity) / 2
     t_curve = angle * (2 * t - 1)
-    t_curve = math.tan(t_curve) / math.cos(angle)
-    max_curve = math.tan(angle) / math.cos(angle)
-    t_curve = t_curve / max_curve
+    t_curve = math.tan(t_curve) / math.tan(angle)
     t_curve = (t_curve + 1) / 2
 
     ncp1 = cp1 / cp1_norm * cp0_norm
