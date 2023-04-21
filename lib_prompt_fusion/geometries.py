@@ -12,10 +12,10 @@ def curved_geometry(t, control_points):
     similarity = (similarity + 1) / 4
 
     def curve(x):
-        return math.sin( * x - 1)
+        return math.asin(2 * x - 1)
 
     def scaled_curve(x):
-       return (curve(x) / curve(similarity) + 1) / 2
+       return 1 - (curve(x) / curve(similarity) + 1) / 2
 
     t_cos = scaled_curve(similarity + (1 - 2 * similarity) * t)
 
