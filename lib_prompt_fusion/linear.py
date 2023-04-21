@@ -1,6 +1,4 @@
-import numpy
 import math
-
 import torch
 
 
@@ -25,7 +23,7 @@ if __name__ == '__main__':
     turtle_tool.speed(10)
     turtle_tool.up()
 
-    points = torch.Tensor([[-2., 1], [3, 2]])*100
+    points = torch.Tensor([[-2., 1], [3, 1], [0., 1.]])*100
 
     for point in points:
         turtle_tool.goto([int(point[0]), int(point[1])])
@@ -35,11 +33,14 @@ if __name__ == '__main__':
     turtle_tool.dot(5, "red")
 
     for i in range(size):
-        t = i/(size-1)
+        t = i / size
         point = compute_linear(curved_geometry)(t, points)
-        turtle_tool.goto([int(point[0]), int(point[1])])
-        turtle_tool.dot()
-        print(point)
+        try:
+            turtle_tool.goto([int(point[0]), int(point[1])])
+            turtle_tool.dot()
+            print(point)
+        except ValueError:
+            pass
 
     turtle_tool.goto(100000, 100000)
     turtle_tool.dot()
