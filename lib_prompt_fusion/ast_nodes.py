@@ -1,6 +1,7 @@
 from lib_prompt_fusion.catmull import compute_catmull
 from lib_prompt_fusion.bezier import compute_on_curve_with_points as compute_bezier
 from lib_prompt_fusion.linear import compute_linear
+from lib_prompt_fusion.geometries import linear_geometry, curved_geometry
 from lib_prompt_fusion.t_scaler import scale_t
 from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 
@@ -55,9 +56,12 @@ class InterpolationExpression:
             steps[i] = int(step)
 
         interpolation_function = {
-            'catmull': compute_catmull,
-            'linear': compute_linear,
-            'bezier': compute_bezier,
+            'linear': compute_linear(linear_geometry),
+            'bezier': compute_bezier(linear_geometry),
+            'catmull': compute_catmull(linear_geometry),
+            'linear-curve': compute_linear(curved_geometry),
+            'bezier-curve': compute_bezier(curved_geometry),
+            'catmull-curve': compute_catmull(curved_geometry),
         }[self.__function_name]
 
         def steps_scale_t(t, conditionings):
