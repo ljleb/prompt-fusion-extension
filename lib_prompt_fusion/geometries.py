@@ -5,8 +5,6 @@ from lib_prompt_fusion import global_state
 
 def curved_geometry(t, step, control_points):
     p0, p1 = control_points
-    if torch.equal(p0, p1):
-        return p0
 
     origin = global_state.get_origin_cond_at(step)
     p0 = p0 - origin
@@ -17,6 +15,8 @@ def curved_geometry(t, step, control_points):
 
     angle = torch.sum((p0 / p0_norm) * (p1 / p1_norm))
     angle = math.acos(angle) / 2
+    if angle == 0:
+        return control_points[0]
 
     t_curve = angle * (2 * t - 1)
     t_curve = math.tan(t_curve) / math.tan(angle)
