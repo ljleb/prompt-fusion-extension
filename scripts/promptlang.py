@@ -6,9 +6,10 @@ sys.path.append(base_dir)
 from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 from lib_prompt_fusion.prompt_parser import parse_prompt
 from lib_prompt_fusion.hijacker import ModuleHijacker
-from lib_prompt_fusion import empty_cond
+from lib_prompt_fusion import empty_cond, global_state
 from modules import prompt_parser, script_callbacks, shared
 import torch
+import gradio as gr
 
 
 fusion_hijacker_attribute = '__fusion_hijacker'
@@ -21,6 +22,8 @@ prompt_parser_hijacker = ModuleHijacker.install_or_get(
 def on_ui_settings():
     section = ('prompt-fusion', 'Prompt Fusion')
     shared.opts.add_option('prompt_fusion_enabled', shared.OptionInfo(True, 'Enabled', section=section))
+    shared.opts.add_option('prompt_fusion_curve_relative_negative', shared.OptionInfo(True, 'Rotate around the negative prompt', section=section))
+    shared.opts.add_option('prompt_fusion_curve_scale', shared.OptionInfo(0, 'Interpolate in spherical geometry (0 = do not rotate, 1 = rotate to scale)', component=gr.Number, section=section))
 
 
 script_callbacks.on_ui_settings(on_ui_settings)
@@ -41,8 +44,14 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, original_fun
                     for begin, end, tensor_builder
                     in zip(consecutive_ranges[:-1], consecutive_ranges[1:], tensor_builders)]
 
-    return [_sample_tensor_schedules(cond_tensor, total_steps)
-            for cond_tensor in cond_tensors]
+    schedules = [_sample_tensor_schedules(cond_tensor, total_steps)
+              for cond_tensor in cond_tensors]
+
+    if global_state.is_negative:
+        global_state.is_negative = False
+        global_state.negative_schedules = schedules[0]
+
+    return schedules
 
 
 def _parse_tensor_builders(prompts, total_steps):
@@ -100,6 +109,18 @@ def _sample_tensor_schedules(tensor, steps):
     return schedules
 
 
+class PromptFusionScript(scripts.Script):
+    def title(self):
+        return 'Prompt Fusion'
+
+    def show(self, is_img2img):
+        return scripts.AlwaysVisible
+
+    def process(self, p, *args):
+        global_state.is_negative = True
+        global_state.negative_schedules = None
+
+
 if __name__ == '__main__':
     import turtle as tr
     from lib_prompt_fusion.geometries import curved_geometry, linear_geometry
@@ -110,7 +131,7 @@ if __name__ == '__main__':
     turtle_tool.speed(10)
     turtle_tool.up()
 
-    points = torch.Tensor([[-2., .1], [2., .1]]) * 100
+    points = torch.Tensor([[-3, 2], [1, 1]]) * 100
 
     for point in points:
         turtle_tool.goto([int(point[0]), int(point[1])])

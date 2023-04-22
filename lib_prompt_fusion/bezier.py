@@ -3,22 +3,22 @@ import numpy as np
 
 
 def compute_on_curve_with_points(geometry):
-    def inner(t, control_points):
+    def inner(t, step, control_points):
         if len(control_points) == 1:
             return control_points[0]
         elif len(control_points) == 2:
-            return geometry(t, control_points)
+            return geometry(t, step, control_points)
         copied_control_points = copy.deepcopy(control_points)
-        return compute_casteljau(geometry)(t, copied_control_points, len(copied_control_points))
+        return compute_casteljau(geometry)(t, step, copied_control_points, len(copied_control_points))
 
     return inner
 
 
 def compute_casteljau(geometry):
-    def inner(t, cp_list, size):
+    def inner(t, step, cp_list, size):
         for i in reversed(range(1, size)):
             for j in range(i):
-                cp_list[j] = geometry(t, [cp_list[j], cp_list[j+1]])
+                cp_list[j] = geometry(t, step, [cp_list[j], cp_list[j+1]])
         return cp_list[0]
 
     return inner

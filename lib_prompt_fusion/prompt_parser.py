@@ -129,7 +129,7 @@ def parse_interpolation(prompt, stoppers):
     exprs = exprs[:max_len]
     steps = steps[:max_len]
 
-    return ParseResult(prompt=prompt, expr=ast.InterpolationExpression(exprs, steps))
+    return ParseResult(prompt=prompt, expr=ast.InterpolationExpression(exprs, steps, function_name))
 
 
 def parse_interpolation_exprs(prompt, stoppers):
@@ -152,10 +152,7 @@ def parse_interpolation_exprs(prompt, stoppers):
 def parse_interpolation_function_name(prompt, stoppers):
     try:
         prompt, _ = parse_colon(prompt, stoppers)
-        function_names = (
-            'linear', 'catmull', 'bezier',
-            'linear-curve', 'catmull-curve', 'bezier-curve',
-        )
+        function_names = ('linear', 'catmull', 'bezier')
         return parse_token(prompt, whitespace_tail_regex('|'.join(function_names), stoppers))
     except ValueError:
         return ParseResult(prompt=prompt, expr=None)
