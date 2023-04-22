@@ -26,7 +26,7 @@ class InterpolationTensor:
         for i, nested_functions in enumerate(control_points_functions):
             control_points[i] = InterpolationTensor(control_points[i], nested_functions).interpolate(t, step)
 
-        return interpolation_function(t, control_points)
+        return interpolation_function(t, step, control_points)
 
 
 class InterpolationTensorBuilder:
@@ -73,14 +73,14 @@ class InterpolationTensorBuilder:
         except TypeError:
             return [InterpolationTensorBuilder.__offset_tensor(e, offset) for e in tensor]
 
-    def build(self, conditionings):
+    def build(self, conds):
         return InterpolationTensor(
-            InterpolationTensorBuilder.__build_conditionings_tensor(self.__indices_tensor, conditionings),
+            InterpolationTensorBuilder.__build_conditionings_tensor(self.__indices_tensor, conds),
             self.__interpolation_functions)
 
     @staticmethod
-    def __build_conditionings_tensor(tensor, conditionings):
+    def __build_conditionings_tensor(tensor, conds):
         if type(tensor) is int:
-            return conditionings[tensor]
+            return conds[tensor]
         else:
-            return [InterpolationTensorBuilder.__build_conditionings_tensor(e, conditionings) for e in tensor]
+            return [InterpolationTensorBuilder.__build_conditionings_tensor(e, conds) for e in tensor]

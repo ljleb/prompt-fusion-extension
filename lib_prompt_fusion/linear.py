@@ -3,14 +3,14 @@ import torch
 
 
 def compute_linear(geometry):
-    def inner(t, control_points):
+    def inner(t, step, control_points):
         if len(control_points) <= 2:
-            return geometry(t, control_points)
+            return geometry(t, step, control_points)
         else:
             target_curve = min(int(t * (len(control_points) - 1)), len(control_points) - 1)
             cp0 = control_points[target_curve]
             cp1 = control_points[target_curve + 1] if target_curve + 1 < len(control_points) else control_points[-1]
-            return geometry(math.fmod(t * (len(control_points) - 1), 1.), [cp0, cp1])
+            return geometry(math.fmod(t * (len(control_points) - 1), 1.), step, [cp0, cp1])
 
     return inner
 

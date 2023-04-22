@@ -56,18 +56,15 @@ class InterpolationExpression:
             steps[i] = int(step)
 
         interpolation_function = {
-            'linear': compute_linear(linear_geometry),
-            'bezier': compute_bezier(linear_geometry),
-            'catmull': compute_catmull(linear_geometry),
-            'linear-curve': compute_linear(curved_geometry),
-            'bezier-curve': compute_bezier(curved_geometry),
-            'catmull-curve': compute_catmull(curved_geometry),
+            'linear': compute_linear(curved_geometry),
+            'bezier': compute_bezier(curved_geometry),
+            'catmull': compute_catmull(curved_geometry),
         }[self.__function_name]
 
-        def steps_scale_t(t, conditionings):
+        def steps_scale_t(t, step, conditionings):
             scaled_t = (t * total_steps - steps[0]) / max(1, steps[-1] - steps[0])
             scaled_t = scale_t(scaled_t, steps)
-            return interpolation_function(scaled_t, conditionings)
+            return interpolation_function(scaled_t, step, conditionings)
 
         return steps_scale_t
 
