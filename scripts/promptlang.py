@@ -28,8 +28,9 @@ prompt_parser_hijacker = hijacker.ModuleHijacker.install_or_get(
 def on_ui_settings():
     section = ('prompt-fusion', 'Prompt Fusion')
     shared.opts.add_option('prompt_fusion_enabled', shared.OptionInfo(True, 'Enabled', section=section))
-    shared.opts.add_option('prompt_fusion_curve_relative_negative', shared.OptionInfo(False, 'Rotate around the negative prompt', section=section))
-    shared.opts.add_option('prompt_fusion_curve_scale', shared.OptionInfo(0, 'Interpolate in spherical geometry (0 = do not rotate, 1 = rotate to scale)', component=gr.Number, section=section))
+    shared.opts.add_option('prompt_fusion_slerp_scale', shared.OptionInfo(1, 'Slerp scale (0 = linear geometry, 1 = slerp geometry)', component=gr.Number, section=section))
+    shared.opts.add_option('prompt_fusion_slerp_negative_origin', shared.OptionInfo(True, 'use negative prompt as slerp origin', section=section))
+    shared.opts.add_option('prompt_fusion_slerp_epsilon', shared.OptionInfo(0.0001, 'Slerp epsilon (fallback on linear geometry when conds are too similar. 0 = parallel, 1 = perpendicular)', component=gr.Number, section=section))
 
 
 script_callbacks.on_ui_settings(on_ui_settings)
@@ -88,7 +89,7 @@ def _sample_tensor_schedules(tensor, steps):
 
     for step in range(steps):
         origin_cond = global_state.get_origin_cond_at(step)
-        params = interpolation_tensor.InterpolationParams(step / steps, step, global_state.get_curve_scale())
+        params = interpolation_tensor.InterpolationParams(step / steps, step, global_state.get_slerp_scale(), global_state.get_slerp_epsilon())
         schedule_cond = tensor.interpolate(params, origin_cond)
         if schedules and torch.all(torch.eq(schedules[-1].cond, schedule_cond)):
             schedules[-1] = prompt_parser.ScheduledPromptConditioning(end_at_step=step, cond=schedules[-1].cond)

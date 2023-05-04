@@ -74,7 +74,7 @@ class InterpolationExpression:
             'linear': interpolation_functions.compute_linear,
             'bezier': interpolation_functions.compute_bezier,
             'catmull': interpolation_functions.compute_catmull,
-        }[self.__function_name](slerp_geometry)
+        }[self.__function_name]
 
         def steps_scale_t(conds, params: interpolation_tensor.InterpolationParams):
             scaled_t = (params.t * total_steps - steps[0]) / max(1, steps[-1] - steps[0])

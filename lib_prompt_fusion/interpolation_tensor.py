@@ -7,6 +7,7 @@ class InterpolationParams(NamedTuple):
     t: float
     step: int
     slerp_scale: float
+    slerp_epsilon: float
 
 
 class InterpolationTensor:
