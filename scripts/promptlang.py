@@ -5,11 +5,11 @@ sys.path.append(base_dir)
 
 from lib_prompt_fusion import interpolation_tensor, prompt_parser as prompt_fusion_parser, hijacker, empty_cond, global_state
 import importlib
-importlib.reload(interpolation_tensor)
-importlib.reload(prompt_fusion_parser)
 importlib.reload(hijacker)
 importlib.reload(empty_cond)
 importlib.reload(global_state)
+importlib.reload(interpolation_tensor)
+importlib.reload(prompt_fusion_parser)
 from modules import prompt_parser, script_callbacks, shared
 import torch
 import gradio as gr
@@ -85,7 +85,8 @@ def _sample_tensor_schedules(tensor, steps):
 
     for step in range(steps):
         origin_cond = global_state.get_origin_cond_at(step)
-        schedule_cond = tensor.interpolate(step / steps, step, origin_cond)
+        params = interpolation_tensor.InterpolationParams(step / steps, step, global_state.get_curve_scale())
+        schedule_cond = tensor.interpolate(params, origin_cond)
         if schedules and torch.all(torch.eq(schedules[-1].cond, schedule_cond)):
             schedules[-1] = prompt_parser.ScheduledPromptConditioning(end_at_step=step, cond=schedules[-1].cond)
         else:
@@ -108,7 +109,7 @@ class PromptFusionScript(scripts.Script):
 
 if __name__ == '__main__':
     import turtle as tr
-    from lib_prompt_fusion.geometries import curved_geometry, linear_geometry
+    from lib_prompt_fusion.geometries import slerp_geometry, linear_geometry
     from lib_prompt_fusion.linear import compute_linear
     from lib_prompt_fusion.bezier import compute_on_curve_with_points
     size = 30
@@ -127,7 +128,7 @@ if __name__ == '__main__':
 
     for i in range(size):
         t = i / size
-        point = compute_linear(curved_geometry)(t, points)
+        point = compute_linear(slerp_geometry)(t, points)
         try:
             turtle_tool.goto([int(point[0]), int(point[1])])
             turtle_tool.dot()

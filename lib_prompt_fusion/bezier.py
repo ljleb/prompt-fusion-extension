@@ -1,25 +1,26 @@
 import copy
 import numpy as np
+from lib_prompt_fusion import interpolation_tensor
 
 
 def compute_on_curve_with_points(geometry):
-    def inner(t, step, control_points):
+    def inner(control_points, params: interpolation_tensor.InterpolationParams):
         if len(control_points) == 1:
             return control_points[0]
         elif len(control_points) == 2:
-            return geometry(t, step, control_points)
+            return geometry(control_points, params)
         copied_control_points = copy.deepcopy(control_points)
-        return compute_casteljau(geometry)(t, step, copied_control_points, len(copied_control_points))
+        return compute_casteljau(geometry)(copied_control_points, params, len(copied_control_points))
 
     return inner
 
 
 def compute_casteljau(geometry):
-    def inner(t, step, cp_list, size):
+    def inner(ps, params, size):
         for i in reversed(range(1, size)):
             for j in range(i):
-                cp_list[j] = geometry(t, step, [cp_list[j], cp_list[j+1]])
-        return cp_list[0]
+                ps[j] = geometry([ps[j], ps[j+1]], params)
+        return ps[0]
 
     return inner
 

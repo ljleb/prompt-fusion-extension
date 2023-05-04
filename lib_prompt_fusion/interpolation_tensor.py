@@ -1,18 +1,25 @@
 import torch
 from modules import prompt_parser, shared
+from typing import NamedTuple
+
+
+class InterpolationParams(NamedTuple):
+    t: float
+    step: int
+    slerp_scale: float
 
 
 class InterpolationTensor:
-    def __init__(self, conditionings_tensor, interpolation_functions, empty_cond):
+    def __init__(self, conditionings_tensor, interpolation_functions, empty_cond: torch.Tensor):
         self.__conditionings_tensor = conditionings_tensor
         self.__interpolation_functions = interpolation_functions
         self.__empty_cond = empty_cond
 
-    def interpolate(self, t, step, origin_cond):
-        cond = self.interpolate_rec(t, step, 0, origin_cond)
+    def interpolate(self, params: InterpolationParams, origin_cond: torch.Tensor):
+        cond = self.interpolate_rec(params, 0, origin_cond)
         return self.__resize_cond_like(origin_cond, cond) + cond
 
-    def interpolate_rec(self, t, step, axis, origin_cond):
+    def interpolate_rec(self, params: InterpolationParams, axis: int, origin_cond: torch.Tensor):
         tensor_axes = len(self.__interpolation_functions) - axis
         if tensor_axes == 0:
             if type(self.__conditionings_tensor) is not list:
@@ -20,7 +27,7 @@ class InterpolationTensor:
 
             schedule = None
             for schedule in self.__conditionings_tensor:
-                if schedule.end_at_step >= step:
+                if schedule.end_at_step >= params.step:
                     break
 
             assert schedule is not None, "hmm! that's a weird one. devs expected this to work for some reason KEKW"
@@ -30,18 +37,16 @@ class InterpolationTensor:
         if tensor_axes == 1:
             control_points = list(self.__conditionings_tensor)
         else:
-            control_points = [InterpolationTensor(sub_tensor, self.__interpolation_functions, self.__empty_cond).interpolate_rec(t, step, axis + 1, origin_cond)
+            control_points = [InterpolationTensor(sub_tensor, self.__interpolation_functions, self.__empty_cond).interpolate_rec(params, axis + 1, origin_cond)
                               for sub_tensor in self.__conditionings_tensor]
 
         for i, nested_functions in enumerate(control_points_functions):
-            control_points[i] = InterpolationTensor(control_points[i], nested_functions, self.__empty_cond).interpolate_rec(t, step, 0, origin_cond)
+            control_points[i] = InterpolationTensor(control_points[i], nested_functions, self.__empty_cond).interpolate_rec(params, 0, origin_cond)
 
-        return interpolation_function(t, step, control_points)
+        return interpolation_function(control_points, params)
 
     def __resize_cond_like(self, cond_to_resize, reference_cond):
-        target_size = reference_cond.size(0) // 77
-        cond_size = cond_to_resize.size(0) // 77
-        missing_size = max(0, target_size - cond_size)
+        missing_size = max(0, reference_cond.size(0) - cond_to_resize.size(0)) // 77
         return torch.concatenate([cond_to_resize] + [self.__empty_cond] * missing_size)
 
 
@@ -105,7 +110,7 @@ class InterpolationTensorBuilder:
         else:
             return [InterpolationTensorBuilder.__build_conditionings_tensor(e, conds) for e in tensor]
 
-    def __resize_uniformly(self, conds, max_cond_size):
+    def __resize_uniformly(self, conds, max_cond_size: int):
         conds[:] = ([self.__resize_schedule(schedule, max_cond_size) for schedule in schedules]
                     for schedules in conds)
         return conds
