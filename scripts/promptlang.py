@@ -109,37 +109,3 @@ class PromptFusionScript(scripts.Script):
     def process(self, p, *args):
         global_state.is_negative = True
         global_state.negative_schedules = None
-
-
-if __name__ == '__main__':
-    import turtle as tr
-    from lib_prompt_fusion.geometries import slerp_geometry, linear_geometry
-    from lib_prompt_fusion.linear import compute_linear
-    from lib_prompt_fusion.bezier import compute_on_curve_with_points
-    size = 30
-    turtle_tool = tr.Turtle()
-    turtle_tool.speed(10)
-    turtle_tool.up()
-
-    points = torch.Tensor([[-3, 2], [1, 1]]) * 100
-
-    for point in points:
-        turtle_tool.goto([int(point[0]), int(point[1])])
-        turtle_tool.dot(5, "red")
-
-    turtle_tool.goto([0,0])
-    turtle_tool.dot(5, "red")
-
-    for i in range(size):
-        t = i / size
-        point = compute_linear(slerp_geometry)(t, points)
-        try:
-            turtle_tool.goto([int(point[0]), int(point[1])])
-            turtle_tool.dot()
-            print(point)
-        except ValueError:
-            pass
-
-    turtle_tool.goto(100000, 100000)
-    turtle_tool.dot()
-    tr.done()
