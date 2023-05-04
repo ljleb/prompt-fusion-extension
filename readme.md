@@ -62,6 +62,7 @@ Interpolate using a bezier curve from `fireball monster` (step 0) to `dragon mon
 
 The following webui releases are officially supported:
 - `v1.0.0-pre`
+- HEAD (there may be a slight lag for issues arising during quick a1111 webui updates)
 
 ## Installation
 1. Visit the **Extensions** tab of Automatic's WebUI.
