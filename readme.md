@@ -66,10 +66,13 @@ The following webui releases are officially supported:
 
 ## Installation
 1. Visit the **Extensions** tab of Automatic's WebUI.
-2. Visit the **Install from URL** subtab.
-3. Copy and paste `https://github.com/ljleb/prompt-fusion-extension` in the **URL for extension's git repository** textbox.
-4. Press the **Install** button. 
-
+2. Visit the **Available** subtab.
+3. Look for **Prompt Fusion**.
+4. Press the **Install** button.
+5. Wait for the webui to finish downloading the extension.
+6. Visit the **Installed** subtab.
+7. click on **Apply and restart UI**.
+6.b Restart the webui completely.
 
 ## Usage
 - Check the [wiki pages](https://github.com/ljleb/fusion/wiki) for the extension documentation.
