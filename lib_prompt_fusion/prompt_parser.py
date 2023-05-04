@@ -178,7 +178,7 @@ def parse_interpolation_step(prompt, stoppers):
     except ValueError:
         pass
 
-    if prompt[0] in {',', ']'}:
+    if prompt[0] in {',', ':', ']'}:
         return ParseResult(prompt=prompt, expr=None)
 
     raise ValueError
