@@ -8,7 +8,7 @@ negative_schedules: Optional[List[prompt_parser.ScheduledPromptConditioning]] = 
 
 
 def get_origin_cond_at(step: int):
-    if not negative_schedules or not shared.opts.data.get('prompt_fusion_curve_relative_negative', False):
+    if not negative_schedules or not shared.opts.data.get('prompt_fusion_slerp_negative_origin', False):
         return empty_cond.get()
 
     for schedule in negative_schedules:
@@ -18,5 +18,9 @@ def get_origin_cond_at(step: int):
     return empty_cond.get()
 
 
-def get_curve_scale():
-    return shared.opts.data.get('prompt_fusion_curve_scale', 0)
+def get_slerp_scale():
+    return shared.opts.data.get('prompt_fusion_slerp_scale', 1)
+
+
+def get_slerp_epsilon():
+    return shared.opts.data.get('prompt_fusion_slerp_epsilon', 0.0001)

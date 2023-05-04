@@ -9,11 +9,11 @@ def slerp_geometry(control_points, params: interpolation_tensor.InterpolationPar
     p1_norm = torch.linalg.norm(p1)
 
     similarity = torch.sum((p0 / p0_norm) * (p1 / p1_norm))
-    similarity = min(1., max(-1., similarity))
+    similarity = min(1., max(-1., float(similarity)))
+    if similarity <= params.slerp_epsilon - 1 or similarity >= 1 - params.slerp_epsilon:
+        return linear_geometry(control_points, params)
 
-    angle = math.acos(similarity) / 2
-    if angle == 0:
-        return control_points[0]
+    angle = math.acos(float(similarity)) / 2
 
     t_curve = angle * (2 * params.t - 1)
     t_curve = math.tan(t_curve) / math.tan(angle)
