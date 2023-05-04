@@ -1,9 +1,9 @@
 from lib_prompt_fusion.catmull import compute_catmull
 from lib_prompt_fusion.bezier import compute_on_curve_with_points as compute_bezier
 from lib_prompt_fusion.linear import compute_linear
-from lib_prompt_fusion.geometries import linear_geometry, curved_geometry
+from lib_prompt_fusion.geometries import linear_geometry, slerp_geometry
 from lib_prompt_fusion.t_scaler import scale_t
-from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
+from lib_prompt_fusion import interpolation_tensor
 
 
 class ListExpression:
@@ -73,15 +73,17 @@ class InterpolationExpression:
             i += 1 + none_len
 
         interpolation_function = {
-            'linear': compute_linear(curved_geometry),
-            'bezier': compute_bezier(curved_geometry),
-            'catmull': compute_catmull(curved_geometry),
+            'linear': compute_linear(slerp_geometry),
+            'bezier': compute_bezier(slerp_geometry),
+            'catmull': compute_catmull(slerp_geometry),
         }[self.__function_name]
 
-        def steps_scale_t(t, step, conditionings):
-            scaled_t = (t * total_steps - steps[0]) / max(1, steps[-1] - steps[0])
+        def steps_scale_t(conds, params: interpolation_tensor.InterpolationParams):
+            scaled_t = (params.t * total_steps - steps[0]) / max(1, steps[-1] - steps[0])
             scaled_t = scale_t(scaled_t, steps)
-            return interpolation_function(scaled_t, step, conditionings)
+
+            new_params = interpolation_tensor.InterpolationParams(scaled_t, *params[1:])
+            return interpolation_function(conds, new_params)
 
         return steps_scale_t
 
@@ -192,5 +194,5 @@ class LiftExpression:
 
 def _eval_float(expression, steps_range, total_steps, context):
     mock_database = ['']
-    expression.extend_tensor(InterpolationTensorBuilder(prompt_database=mock_database), steps_range, total_steps, context)
+    expression.extend_tensor(interpolation_tensor.InterpolationTensorBuilder(prompt_database=mock_database), steps_range, total_steps, context)
     return float(mock_database[0])
