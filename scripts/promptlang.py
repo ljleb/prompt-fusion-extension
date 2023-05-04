@@ -3,17 +3,20 @@ import sys
 base_dir = scripts.basedir()
 sys.path.append(base_dir)
 
-from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
-from lib_prompt_fusion.prompt_parser import parse_prompt
-from lib_prompt_fusion.hijacker import ModuleHijacker
-from lib_prompt_fusion import empty_cond, global_state
+from lib_prompt_fusion import interpolation_tensor, prompt_parser as prompt_fusion_parser, hijacker, empty_cond, global_state
+import importlib
+importlib.reload(interpolation_tensor)
+importlib.reload(prompt_fusion_parser)
+importlib.reload(hijacker)
+importlib.reload(empty_cond)
+importlib.reload(global_state)
 from modules import prompt_parser, script_callbacks, shared
 import torch
 import gradio as gr
 
 
 fusion_hijacker_attribute = '__fusion_hijacker'
-prompt_parser_hijacker = ModuleHijacker.install_or_get(
+prompt_parser_hijacker = hijacker.ModuleHijacker.install_or_get(
     module=prompt_parser,
     hijacker_attribute=fusion_hijacker_attribute,
     register_uninstall=script_callbacks.on_script_unloaded)
@@ -40,7 +43,7 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, original_fun
     flattened_prompts, consecutive_ranges = _get_flattened_prompts(tensor_builders)
     flattened_conds = original_function(model, flattened_prompts, total_steps)
 
-    cond_tensors = [tensor_builder.build(_resize_uniformly(flattened_conds[begin:end]))
+    cond_tensors = [tensor_builder.build(flattened_conds[begin:end])
                     for begin, end, tensor_builder
                     in zip(consecutive_ranges[:-1], consecutive_ranges[1:], tensor_builders)]
 
@@ -58,8 +61,8 @@ def _parse_tensor_builders(prompts, total_steps):
     tensor_builders = []
 
     for prompt in prompts:
-        expr = parse_prompt(prompt)
-        tensor_builder = InterpolationTensorBuilder()
+        expr = prompt_fusion_parser.parse_prompt(prompt)
+        tensor_builder = interpolation_tensor.InterpolationTensorBuilder()
         expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, dict())
         tensor_builders.append(tensor_builder)
 
@@ -77,30 +80,12 @@ def _get_flattened_prompts(tensor_builders):
     return flattened_prompts, consecutive_ranges
 
 
-def _resize_uniformly(conds):
-    max_cond_size = max(schedule.cond.size(0)
-                        for schedules in conds
-                        for schedule in schedules)
-
-    conds[:] = ([_resize_schedule(schedule, max_cond_size) for schedule in schedules]
-                for schedules in conds)
-    return conds
-
-
-def _resize_schedule(schedule, target_size):
-    cond_missing_size = (target_size - schedule.cond.size(0)) // 77
-    if cond_missing_size == 0:
-        return schedule
-
-    resized_cond = torch.concatenate([schedule.cond] + [empty_cond.get()] * cond_missing_size)
-    return prompt_parser.ScheduledPromptConditioning(cond=resized_cond, end_at_step=schedule.end_at_step)
-
-
 def _sample_tensor_schedules(tensor, steps):
     schedules = []
 
     for step in range(steps):
-        schedule_cond = tensor.interpolate(step / steps, step)
+        origin_cond = global_state.get_origin_cond_at(step)
+        schedule_cond = tensor.interpolate(step / steps, step, origin_cond)
         if schedules and torch.all(torch.eq(schedules[-1].cond, schedule_cond)):
             schedules[-1] = prompt_parser.ScheduledPromptConditioning(end_at_step=step, cond=schedules[-1].cond)
         else:

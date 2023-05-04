@@ -1,26 +1,26 @@
 import math
 import torch
-from lib_prompt_fusion import global_state
 
 
-def curved_geometry(t, step, control_points):
+def curved_geometry(t, _step, control_points):
     p0, p1 = control_points
-
-    origin = global_state.get_origin_cond_at(step)
-    p0 = p0 - origin
-    p1 = p1 - origin
-
     p0_norm = torch.linalg.norm(p0)
     p1_norm = torch.linalg.norm(p1)
 
-    angle = torch.sum((p0 / p0_norm) * (p1 / p1_norm))
-    base = math.sin(angle)
-    mid = origin
-    mid += p0 * math.sin((1 - t) * angle) / base
-    mid += p1 * math.sin(t * angle) / base
+    similarity = torch.sum((p0 / p0_norm) * (p1 / p1_norm))
 
-    lin = linear_geometry(t, step, control_points)
-    return linear_geometry(global_state.get_curve_scale(), step, [lin, mid])
+    angle = math.acos(similarity) / 2
+    if angle == 0:
+        return control_points[0]
+
+    t_curve = angle * (2 * t - 1)
+    t_curve = math.tan(t_curve) / math.tan(angle)
+    t_curve = (t_curve + 1) / 2
+
+    np1 = p1 / p1_norm * p0_norm
+    mid = p0 + (np1 - p0) * t_curve
+    mid = mid / torch.linalg.norm(mid) * (p0_norm + (p1_norm - p0_norm) * t)
+    return mid
 
 
 def linear_geometry(t, _step, control_points):
