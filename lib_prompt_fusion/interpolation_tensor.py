@@ -1,39 +1,56 @@
+import torch
+from modules import prompt_parser, shared
+
+
 class InterpolationTensor:
-    def __init__(self, conditionings_tensor, interpolation_functions):
+    def __init__(self, conditionings_tensor, interpolation_functions, empty_cond):
         self.__conditionings_tensor = conditionings_tensor
         self.__interpolation_functions = interpolation_functions
+        self.__empty_cond = empty_cond
 
-    def interpolate(self, t, step, axis=0):
+    def interpolate(self, t, step, origin_cond):
+        cond = self.interpolate_rec(t, step, 0, origin_cond)
+        return self.__resize_cond_like(origin_cond, cond) + cond
+
+    def interpolate_rec(self, t, step, axis, origin_cond):
         tensor_axes = len(self.__interpolation_functions) - axis
         if tensor_axes == 0:
             if type(self.__conditionings_tensor) is not list:
                 return self.__conditionings_tensor
 
+            schedule = None
             for schedule in self.__conditionings_tensor:
                 if schedule.end_at_step >= step:
-                    return schedule.cond
+                    break
 
-            # fallback
-            return self.__conditionings_tensor[-1].cond
+            assert schedule is not None, "hmm! that's a weird one. devs expected this to work for some reason KEKW"
+            return self.__resize_cond_like(schedule.cond, origin_cond) - self.__resize_cond_like(origin_cond, schedule.cond)
 
         interpolation_function, control_points_functions = self.__interpolation_functions[axis]
         if tensor_axes == 1:
             control_points = list(self.__conditionings_tensor)
         else:
-            control_points = [InterpolationTensor(sub_tensor, self.__interpolation_functions).interpolate(t, step, axis + 1)
+            control_points = [InterpolationTensor(sub_tensor, self.__interpolation_functions, self.__empty_cond).interpolate_rec(t, step, axis + 1, origin_cond)
                               for sub_tensor in self.__conditionings_tensor]
 
         for i, nested_functions in enumerate(control_points_functions):
-            control_points[i] = InterpolationTensor(control_points[i], nested_functions).interpolate(t, step)
+            control_points[i] = InterpolationTensor(control_points[i], nested_functions, self.__empty_cond).interpolate_rec(t, step, 0, origin_cond)
 
         return interpolation_function(t, step, control_points)
 
+    def __resize_cond_like(self, cond_to_resize, reference_cond):
+        target_size = reference_cond.size(0) // 77
+        cond_size = cond_to_resize.size(0) // 77
+        missing_size = max(0, target_size - cond_size)
+        return torch.concatenate([cond_to_resize] + [self.__empty_cond] * missing_size)
+
 
 class InterpolationTensorBuilder:
-    def __init__(self, tensor=None, prompt_database=None, interpolation_functions=None):
+    def __init__(self, tensor=None, prompt_database=None, interpolation_functions=None, empty_cond=None):
         self.__indices_tensor = tensor if tensor is not None else 0
         self.__prompt_database = prompt_database if prompt_database is not None else ['']
         self.__interpolation_functions = interpolation_functions if interpolation_functions is not None else []
+        self.__empty_cond = empty_cond if empty_cond is not None else torch.zeros(size=(77, 768), dtype=torch.float32, device=shared.device)
 
     def append(self, suffix):
         for i in range(len(self.__prompt_database)):
@@ -74,9 +91,12 @@ class InterpolationTensorBuilder:
             return [InterpolationTensorBuilder.__offset_tensor(e, offset) for e in tensor]
 
     def build(self, conds):
+        max_cond_size = self.__max_cond_size(conds)
+        conds = self.__resize_uniformly(conds, max_cond_size)
         return InterpolationTensor(
             InterpolationTensorBuilder.__build_conditionings_tensor(self.__indices_tensor, conds),
-            self.__interpolation_functions)
+            self.__interpolation_functions,
+            self.__empty_cond)
 
     @staticmethod
     def __build_conditionings_tensor(tensor, conds):
@@ -84,3 +104,22 @@ class InterpolationTensorBuilder:
             return conds[tensor]
         else:
             return [InterpolationTensorBuilder.__build_conditionings_tensor(e, conds) for e in tensor]
+
+    def __resize_uniformly(self, conds, max_cond_size):
+        conds[:] = ([self.__resize_schedule(schedule, max_cond_size) for schedule in schedules]
+                    for schedules in conds)
+        return conds
+
+    def __resize_schedule(self, schedule, target_size):
+        cond_missing_size = (target_size - schedule.cond.size(0)) // 77
+        if cond_missing_size <= 0:
+            return schedule
+
+        resized_cond = torch.concatenate([schedule.cond] + [self.__empty_cond] * cond_missing_size)
+        return prompt_parser.ScheduledPromptConditioning(cond=resized_cond, end_at_step=schedule.end_at_step)
+
+    @staticmethod
+    def __max_cond_size(conds):
+        return max(schedule.cond.size(0)
+                   for schedules in conds
+                   for schedule in schedules)
