@@ -22,7 +22,7 @@ prompt_parser_hijacker = ModuleHijacker.install_or_get(
 def on_ui_settings():
     section = ('prompt-fusion', 'Prompt Fusion')
     shared.opts.add_option('prompt_fusion_enabled', shared.OptionInfo(True, 'Enabled', section=section))
-    shared.opts.add_option('prompt_fusion_curve_relative_negative', shared.OptionInfo(True, 'Rotate around the negative prompt', section=section))
+    shared.opts.add_option('prompt_fusion_curve_relative_negative', shared.OptionInfo(False, 'Rotate around the negative prompt', section=section))
     shared.opts.add_option('prompt_fusion_curve_scale', shared.OptionInfo(0, 'Interpolate in spherical geometry (0 = do not rotate, 1 = rotate to scale)', component=gr.Number, section=section))
 
 

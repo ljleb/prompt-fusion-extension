@@ -47,13 +47,30 @@ class InterpolationExpression:
             steps[-1] = LiftExpression(str(steps_range[1] - 1))
 
         for i, step in enumerate(steps):
+            if step is None:
+                continue
+
             step = _eval_float(step, steps_range, total_steps, context)
+
             if 0 < step < 1:
                 step *= total_steps
             else:
                 step += 1
 
             steps[i] = int(step)
+
+        i = 1
+        while i < len(steps):
+            none_len = 0
+            while steps[i + none_len] is None:
+                none_len += 1
+
+            min_step, max_step = steps[i - 1], steps[i + none_len]
+
+            for j in range(none_len):
+                steps[i + j] = min_step + (max_step - min_step) * (j + 1) / (none_len + 1)
+
+            i += 1 + none_len
 
         interpolation_function = {
             'linear': compute_linear(curved_geometry),
@@ -140,16 +157,16 @@ class WeightInterpolationExpression:
 
 
 class DeclarationExpression:
-    def __init__(self, symbol, parameters, nested, expression):
+    def __init__(self, symbol, parameters, value, target):
         self.__symbol = symbol
-        self.__nested = nested
-        self.__expression = expression
+        self.__value = value
+        self.__target = target
         self.__parameters = parameters
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
         updated_context = dict(context)
-        updated_context[self.__symbol] = (self.__nested, self.__parameters)
-        self.__expression.extend_tensor(tensor_builder, steps_range, total_steps, updated_context)
+        updated_context[self.__symbol] = (self.__value, self.__parameters)
+        self.__target.extend_tensor(tensor_builder, steps_range, total_steps, updated_context)
 
 
 class SubstitutionExpression:

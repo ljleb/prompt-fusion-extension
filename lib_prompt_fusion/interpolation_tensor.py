@@ -1,8 +1,12 @@
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
+
 class InterpolationTensor:
     def __init__(self, conditionings_tensor, interpolation_functions):
         self.__conditionings_tensor = conditionings_tensor
         self.__interpolation_functions = interpolation_functions
 
+    @lru_cache()
     def interpolate(self, t, step, axis=0):
         tensor_axes = len(self.__interpolation_functions) - axis
         if tensor_axes == 0:
@@ -20,8 +24,10 @@ class InterpolationTensor:
         if tensor_axes == 1:
             control_points = list(self.__conditionings_tensor)
         else:
-            control_points = [InterpolationTensor(sub_tensor, self.__interpolation_functions).interpolate(t, step, axis + 1)
-                              for sub_tensor in self.__conditionings_tensor]
+            with ThreadPoolExecutor() as executor:
+                control_points = list(executor.map(
+                    lambda sub_tensor: InterpolationTensor(sub_tensor, self.__interpolation_functions).interpolate(t, step, axis + 1),
+                    self.__conditionings_tensor))
 
         for i, nested_functions in enumerate(control_points_functions):
             control_points[i] = InterpolationTensor(control_points[i], nested_functions).interpolate(t, step)
