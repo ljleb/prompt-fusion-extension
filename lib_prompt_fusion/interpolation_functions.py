@@ -49,20 +49,21 @@ def compute_catmull(control_points, params: interpolation_tensor.InterpolationPa
 if __name__ == '__main__':
     import turtle as tr
     import torch
-    size = 90
+    size = 60
     turtle_tool = tr.Turtle()
     turtle_tool.speed(10)
     turtle_tool.up()
 
-    points = torch.Tensor([[-2., 1.], [4., -2.], [0., -2.]]) * 100.
+    points = torch.Tensor([[-2., -2.], [2., 2.]])
+    origin = torch.Tensor([1.5, 1.6])
 
     def sample(slerp_scale, color):
         for i in range(size):
             t = i / size
-            params = interpolation_tensor.InterpolationParams(t, i, slerp_scale)
-            point = compute_linear(points, params)
+            params = interpolation_tensor.InterpolationParams(t, i, slerp_scale, 0.0001)
+            point = origin + compute_linear(points - origin, params)
             try:
-                turtle_tool.goto((float(point[0]), float(point[1])))
+                turtle_tool.goto(tuple(float(p) * 100. for p in point))
                 turtle_tool.dot(5, color)
                 print(point)
             except ValueError:
@@ -75,10 +76,10 @@ if __name__ == '__main__':
     sample(-2, "orange")
 
     for point in points:
-        turtle_tool.goto((float(point[0]), float(point[1])))
+        turtle_tool.goto(tuple(float(p) * 100. for p in point))
         turtle_tool.dot(5, "red")
 
-    turtle_tool.goto((0, 0))
+    turtle_tool.goto(tuple(float(p) * 100. for p in origin))
     turtle_tool.dot(10, "red")
 
     turtle_tool.goto(100000, 100000)
