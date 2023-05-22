@@ -1,5 +1,4 @@
 from lib_prompt_fusion import interpolation_functions
-from lib_prompt_fusion.geometries import linear_geometry, slerp_geometry
 from lib_prompt_fusion.t_scaler import scale_t
 from lib_prompt_fusion import interpolation_tensor
 
