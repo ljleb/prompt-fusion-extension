@@ -72,7 +72,8 @@ The following webui releases are officially supported:
 5. Wait for the webui to finish downloading the extension.
 6. Visit the **Installed** subtab.
 7. click on **Apply and restart UI**.
-6.b Restart the webui completely.
+
+Alternatively, instead of steps 6 and 7, you can restart the webui completely.
 
 ## Usage
 - Check the [wiki pages](https://github.com/ljleb/fusion/wiki) for the extension documentation.
