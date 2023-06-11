@@ -76,15 +76,20 @@ class EditingExpression:
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
         if self.__step is None:
-            step = steps_range[0]
-        else:
-            step = _eval_float(self.__step, steps_range, total_steps, context)
-            if 0 < step < 1:
-                step *= total_steps
-            else:
-                step += 1
+            tensor_builder.append('[')
+            for expr_i, expr in enumerate(self.__expressions):
+                expr.extend_tensor(tensor_builder, steps_range, total_steps, context)
+                tensor_builder.append(':')
+            tensor_builder.append(']')
+            return
 
-            step = int(step)
+        step = _eval_float(self.__step, steps_range, total_steps, context)
+        if 0 < step < 1:
+            step *= total_steps
+        else:
+            step += 1
+
+        step = int(step)
 
         tensor_builder.append('[')
         for expr_i, expr in enumerate(self.__expressions):
@@ -92,10 +97,7 @@ class EditingExpression:
             expr.extend_tensor(tensor_builder, expr_steps_range, total_steps, context)
             tensor_builder.append(':')
 
-        if self.__step is not None:
-            tensor_builder.append(f'{step - 1}')
-
-        tensor_builder.append(']')
+        tensor_builder.append(f'{step - 1}]')
 
 
 class WeightedExpression:
