@@ -33,6 +33,9 @@ functional_parse_test_cases = [
     ('legacy [negative weight]',)*2,
     ('legacy (positive weight)',)*2,
     ('[abc:1girl:2]',)*2,
+    ('[::]', '[::]'),
+    ('[a:b:]', '[a:b:]'),
+    ('[[a:b:1,2]:b:]', {'[a:b:]', '[b:b:]'}),
     ('1girl',)*2,
     ('dashes-in-text',)*2,
     ('text, separated with, comas',)*2,
@@ -84,9 +87,6 @@ functional_parse_test_cases = [
     ('$a($b) = prompt with $b\n$c($d) = yeay $a($d)\n$c(dog)', 'yeay prompt with dog'),
     ('$a = a lot of animals\n$b($c) = I love $c\n$b($a)', 'I love a lot of animals'),
     ('$a($b) = prompt with $b\n$c($d) = yeay $d\n$a($c(dog))', 'prompt with yeay dog'),
-    ('[::]', '[::]'),
-    ('[a:b:]', '[a:b:]'),
-    ('[[a:b:1,2]:b:]', {'[a:b:]', '[b:b:]'}),
 ]
 
 
