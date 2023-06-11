@@ -92,6 +92,14 @@ class EditingExpression:
         self.__step = step
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
+        if self.__step is None:
+            tensor_builder.append('[')
+            for expr_i, expr in enumerate(self.__expressions):
+                expr.extend_tensor(tensor_builder, steps_range, total_steps, context)
+                tensor_builder.append(':')
+            tensor_builder.append(']')
+            return
+
         step = _eval_float(self.__step, steps_range, total_steps, context)
         if 0 < step < 1:
             step *= total_steps
@@ -102,7 +110,7 @@ class EditingExpression:
 
         tensor_builder.append('[')
         for expr_i, expr in enumerate(self.__expressions):
-            expr_steps_range = (steps_range[0], step) if len(self.__expressions) > 1 and expr_i == 0 else (step, steps_range[1])
+            expr_steps_range = (steps_range[0], step) if expr_i == 0 and len(self.__expressions) >= 2 else (step, steps_range[1])
             expr.extend_tensor(tensor_builder, expr_steps_range, total_steps, context)
             tensor_builder.append(':')
 

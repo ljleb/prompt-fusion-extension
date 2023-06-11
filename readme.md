@@ -83,3 +83,4 @@ Alternatively, instead of steps 6 and 7, you can restart the webui completely.
 - Prompt Travel: https://github.com/Kahsolt/stable-diffusion-webui-prompt-travel
 - Shift Attention: https://github.com/yownas/shift-attention
 - Prompt Blending: https://github.com/amotile/stable-diffusion-backend/tree/master/src/process/implementations/automatic1111_scripts
+
