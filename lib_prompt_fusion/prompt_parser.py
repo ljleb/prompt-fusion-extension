@@ -158,17 +158,20 @@ def parse_interpolation_function_name(prompt, stoppers):
 
 
 def parse_interpolation_steps(prompt, stoppers):
-    exprs = []
+    steps = []
 
     try:
         while True:
-            prompt, expr = parse_interpolation_step(prompt, stoppers)
-            exprs.append(expr)
+            prompt, step = parse_interpolation_step(prompt, stoppers)
+            steps.append(step)
             prompt, _ = parse_comma(prompt, stoppers)
     except ValueError:
         pass
 
-    return ParseResult(prompt=prompt, expr=exprs)
+    if len(steps) == 1 and steps[0] is None:
+        raise ValueError
+
+    return ParseResult(prompt=prompt, expr=steps)
 
 
 def parse_interpolation_step(prompt, stoppers):
@@ -186,7 +189,11 @@ def parse_interpolation_step(prompt, stoppers):
 def parse_editing(prompt, stoppers):
     prompt, _ = parse_open_square(prompt, stoppers)
     prompt, exprs = parse_editing_exprs(prompt, stoppers)
-    prompt, step = parse_step(prompt, stoppers)
+    try:
+        prompt, step = parse_step(prompt, stoppers)
+    except ValueError:
+        step = None
+
     prompt, _ = parse_close_square(prompt, stoppers)
     return ParseResult(prompt=prompt, expr=ast.EditingExpression(exprs, step))
 
