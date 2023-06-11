@@ -168,9 +168,6 @@ def parse_interpolation_steps(prompt, stoppers):
     except ValueError:
         pass
 
-    if len(steps) == 1 and steps[0] is None:
-        raise ValueError
-
     return ParseResult(prompt=prompt, expr=steps)
 
 
