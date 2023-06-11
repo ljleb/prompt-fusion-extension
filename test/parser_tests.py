@@ -86,6 +86,7 @@ functional_parse_test_cases = [
     ('$a($b) = prompt with $b\n$c($d) = yeay $d\n$a($c(dog))', 'prompt with yeay dog'),
     ('[::]', '[::]'),
     ('[a:b:]', '[a:b:]'),
+    ('[[a:b:1,2]:b:]', {'[a:b:]', '[b:b:]'}),
 ]
 
 
