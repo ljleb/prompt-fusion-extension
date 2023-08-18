@@ -18,7 +18,7 @@ class InterpolationTensor:
 
     def interpolate(self, params: InterpolationParams, origin_cond: torch.Tensor):
         cond = self.interpolate_rec(params, 0, origin_cond)
-        return self.__resize_cond_like(origin_cond, cond) + cond
+        return cond + self.__extend_cond_like(origin_cond, cond)
 
     def interpolate_rec(self, params: InterpolationParams, axis: int, origin_cond: torch.Tensor):
         tensor_axes = len(self.__interpolation_functions) - axis
@@ -31,22 +31,23 @@ class InterpolationTensor:
                 if schedule.end_at_step >= params.step:
                     break
 
-            assert schedule is not None, "hmm! that's a weird one. devs expected this to work for some reason KEKW"
-            return self.__resize_cond_like(schedule.cond, origin_cond) - self.__resize_cond_like(origin_cond, schedule.cond)
+            return self.__extend_cond_like(schedule.cond, origin_cond) - self.__extend_cond_like(origin_cond, schedule.cond)
 
         interpolation_function, control_points_functions = self.__interpolation_functions[axis]
         if tensor_axes == 1:
             control_points = list(self.__conditionings_tensor)
         else:
-            control_points = [InterpolationTensor(sub_tensor, self.__interpolation_functions, self.__empty_cond).interpolate_rec(params, axis + 1, origin_cond)
-                              for sub_tensor in self.__conditionings_tensor]
+            control_points = [
+                InterpolationTensor(sub_tensor, self.__interpolation_functions, self.__empty_cond).interpolate_rec(params, axis + 1, origin_cond)
+                for sub_tensor in self.__conditionings_tensor
+            ]
 
         for i, nested_functions in enumerate(control_points_functions):
             control_points[i] = InterpolationTensor(control_points[i], nested_functions, self.__empty_cond).interpolate_rec(params, 0, origin_cond)
 
         return interpolation_function(control_points, params)
 
-    def __resize_cond_like(self, cond_to_resize, reference_cond):
+    def __extend_cond_like(self, cond_to_resize, reference_cond):
         missing_size = max(0, reference_cond.size(0) - cond_to_resize.size(0)) // 77
         return torch.concatenate([cond_to_resize] + [self.__empty_cond] * missing_size)
 
