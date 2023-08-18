@@ -54,8 +54,7 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, original_fun
     schedules = [_sample_tensor_schedules(cond_tensor, total_steps)
               for cond_tensor in cond_tensors]
 
-    if global_state.is_negative:
-        global_state.is_negative = False
+    if prompts.is_negative_prompt:
         global_state.negative_schedules = schedules[0]
 
     return schedules
@@ -107,5 +106,4 @@ class PromptFusionScript(scripts.Script):
         return scripts.AlwaysVisible
 
     def process(self, p, *args):
-        global_state.is_negative = True
         global_state.negative_schedules = None
