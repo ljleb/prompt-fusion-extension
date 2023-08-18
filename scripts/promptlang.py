@@ -1,21 +1,7 @@
-import modules.scripts as scripts
-import sys
-base_dir = scripts.basedir()
-sys.path.append(base_dir)
-
-from lib_prompt_fusion import hijacker, empty_cond, global_state, interpolation_tensor, geometries, interpolation_functions, prompt_parser as prompt_fusion_parser, ast_nodes
-import importlib
-importlib.reload(hijacker)
-importlib.reload(empty_cond)
-importlib.reload(global_state)
-importlib.reload(interpolation_tensor)
-importlib.reload(geometries)
-importlib.reload(interpolation_functions)
-importlib.reload(prompt_fusion_parser)
-importlib.reload(ast_nodes)
-from modules import prompt_parser, script_callbacks, shared
-import torch
 import gradio as gr
+import torch
+from lib_prompt_fusion import hijacker, empty_cond, global_state, interpolation_tensor, prompt_parser as prompt_fusion_parser
+from modules import scripts, script_callbacks, prompt_parser, shared
 
 
 fusion_hijacker_attribute = '__fusion_hijacker'
