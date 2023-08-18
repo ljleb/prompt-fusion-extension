@@ -1,8 +1,4 @@
 import modules.scripts as scripts
-import sys
-base_dir = scripts.basedir()
-sys.path.append(base_dir)
-
 from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
 from lib_prompt_fusion.prompt_parser import parse_prompt
 from lib_prompt_fusion.hijacker import ModuleHijacker
@@ -35,7 +31,10 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, original_fun
 
     tensor_builders = _parse_tensor_builders(prompts, total_steps)
     flattened_prompts, consecutive_ranges = _get_flattened_prompts(tensor_builders)
-    flattened_conds = original_function(model, flattened_prompts, total_steps)
+    if isinstance(prompts, getattr(prompt_parser, 'SdConditioning', type(None))):
+        flattened_prompts = prompt_parser.SdConditioning(flattened_prompts, copy_from=prompts)
+
+    flattened_conds = _get_conds_crossattn(original_function(model, flattened_prompts, total_steps))
 
     cond_tensors = [tensor_builder.build(_resize_uniformly(flattened_conds[begin:end]))
                     for begin, end, tensor_builder
@@ -51,7 +50,7 @@ def _parse_tensor_builders(prompts, total_steps):
     for prompt in prompts:
         expr = parse_prompt(prompt)
         tensor_builder = InterpolationTensorBuilder()
-        expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, dict())
+        expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, {})
         tensor_builders.append(tensor_builder)
 
     return tensor_builders
@@ -98,6 +97,20 @@ def _sample_tensor_schedules(tensor, steps):
             schedules.append(prompt_parser.ScheduledPromptConditioning(end_at_step=step, cond=schedule_cond))
 
     return schedules
+
+
+def _get_conds_crossattn(conds):
+    return [
+        [
+            prompt_parser.ScheduledPromptConditioning(
+                cond=schedule.cond['crossattn'],
+                end_at_step=schedule.end_at_step)
+            if isinstance(schedule.cond, dict)
+            else schedule
+            for schedule in schedules
+        ]
+        for schedules in conds
+    ]
 
 
 class PromptFusionScript(scripts.Script):
