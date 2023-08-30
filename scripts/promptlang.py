@@ -23,15 +23,15 @@ script_callbacks.on_ui_settings(on_ui_settings)
 
 
 @prompt_parser_hijacker.hijack('get_learned_conditioning')
-def _hijacked_get_learned_conditioning(model, prompts, total_steps, original_function):
+def _hijacked_get_learned_conditioning(model, prompts, total_steps, *args, original_function, **kwargs):
     if not shared.opts.prompt_fusion_enabled:
-        return original_function(model, prompts, total_steps)
+        return original_function(model, prompts, total_steps, *args, **kwargs)
 
     empty_cond.init(model)
 
     tensor_builders = _parse_tensor_builders(prompts, total_steps)
     flattened_prompts, consecutive_ranges = _get_flattened_prompts(tensor_builders)
-    flattened_conds = original_function(model, flattened_prompts, total_steps)
+    flattened_conds = original_function(model, flattened_prompts, total_steps, *args, **kwargs)
 
     cond_tensors = [tensor_builder.build(flattened_conds[begin:end])
                     for begin, end, tensor_builder
