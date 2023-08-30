@@ -14,7 +14,7 @@ prompt_parser_hijacker = hijacker.ModuleHijacker.install_or_get(
 def on_ui_settings():
     section = ('prompt-fusion', 'Prompt Fusion')
     shared.opts.add_option('prompt_fusion_enabled', shared.OptionInfo(True, 'Enable prompt-fusion extension', section=section))
-    shared.opts.add_option('prompt_fusion_slerp_scale', shared.OptionInfo(1, 'Slerp scale (0 = linear geometry, 1 = slerp geometry)', component=gr.Number, section=section))
+    shared.opts.add_option('prompt_fusion_slerp_scale', shared.OptionInfo(0, 'Slerp scale (0 = linear geometry, 1 = slerp geometry)', component=gr.Number, section=section))
     shared.opts.add_option('prompt_fusion_slerp_negative_origin', shared.OptionInfo(True, 'use negative prompt as slerp origin', section=section))
     shared.opts.add_option('prompt_fusion_slerp_epsilon', shared.OptionInfo(0.0001, 'Slerp epsilon (fallback on linear geometry when conds are too similar. 0 = parallel, 1 = perpendicular)', component=gr.Number, section=section))
 
