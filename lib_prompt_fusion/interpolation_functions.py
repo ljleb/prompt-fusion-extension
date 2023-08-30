@@ -18,7 +18,7 @@ def compute_bezier(control_points, params: interpolation_tensor.InterpolationPar
     def compute_casteljau(ps, size):
         for i in reversed(range(1, size)):
             for j in range(i):
-                ps[j] = geometries.slerp_geometry([ps[j], ps[j+1]])
+                ps[j] = geometries.slerp_geometry([ps[j], ps[j+1]], params)
 
         return ps[0]
 
@@ -35,10 +35,10 @@ def compute_catmull(control_points, params: interpolation_tensor.InterpolationPa
         return compute_linear(control_points, params)
     else:
         target_curve = min(int(params.t * (len(control_points) - 1)), len(control_points) - 1)
-        g0 = control_points[target_curve - 1] if target_curve > 0 else 2 * control_points[0] - control_points[1]
+        g0 = control_points[target_curve - 1] if target_curve > 0 else control_points[0] * 2 - control_points[1]
         cp0 = control_points[target_curve]
         cp1 = control_points[target_curve + 1] if target_curve + 1 < len(control_points) else control_points[-1]
-        g1 = control_points[target_curve + 2] if target_curve + 2 < len(control_points) else 2 * cp1 - cp0
+        g1 = control_points[target_curve + 2] if target_curve + 2 < len(control_points) else cp1 * 2 - cp0
         ip0 = cp0 + (cp1 - g0)/6
         ip1 = cp1 + (cp0 - g1)/6
 

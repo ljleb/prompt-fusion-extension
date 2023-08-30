@@ -3,15 +3,16 @@ from modules import shared, prompt_parser
 from lib_prompt_fusion import empty_cond
 
 
-is_negative: bool = False
+old_webui_is_negative: bool = False
 negative_schedules: Optional[List[prompt_parser.ScheduledPromptConditioning]] = None
+negative_schedules_hires: Optional[List[prompt_parser.ScheduledPromptConditioning]] = None
 
 
-def get_origin_cond_at(step: int):
+def get_origin_cond_at(step: int, is_hires: bool = False):
     if not negative_schedules or not shared.opts.data.get('prompt_fusion_slerp_negative_origin', False):
         return empty_cond.get()
 
-    for schedule in negative_schedules:
+    for schedule in (negative_schedules_hires if is_hires else negative_schedules):
         if schedule.end_at_step >= step:
             return schedule.cond
 
