@@ -27,7 +27,7 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, *args, origi
     if not shared.opts.prompt_fusion_enabled:
         return original_function(model, prompts, total_steps, *args, **kwargs)
 
-    hires_steps, *_ = args if args else (total_steps, True)
+    hires_steps, *_ = args if args else (None, True)
     if hires_steps is not None:
         real_total_steps = hires_steps
     else:
@@ -40,7 +40,7 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, *args, origi
 
     empty_cond.init(model)
 
-    tensor_builders = _parse_tensor_builders(prompts, total_steps)
+    tensor_builders = _parse_tensor_builders(prompts, real_total_steps)
     if hasattr(prompt_parser, 'SdConditioning'):
         empty_conditioning = prompt_parser.SdConditioning(prompts)
         empty_conditioning.clear()
@@ -63,13 +63,18 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, *args, origi
         for subschedules in flattened_schedules
     ]
 
-    schedules = _interpolate_conds(flattened_schedules, consecutive_ranges, tensor_builders, real_total_steps, is_hires=hires_steps is not None)
+    cond_tensors = (tensor_builder.build(flattened_schedules[begin:end], empty_cond.get())
+                    for begin, end, tensor_builder
+                    in zip(consecutive_ranges[:-1], consecutive_ranges[1:], tensor_builders))
+
+    schedules = [_sample_tensor_schedules(cond_tensor, real_total_steps, is_hires=hires_steps is not None)
+                 for cond_tensor in cond_tensors]
 
     if is_negative_prompt:
-        if hires_steps is None:
-            global_state.negative_schedules = schedules[0]
-        else:
+        if hires_steps is not None:
             global_state.negative_schedules_hires = schedules[0]
+        else:
+            global_state.negative_schedules = schedules[0]
 
     if not isinstance(schedules[0][0].cond, torch.Tensor):
         # sdxl
@@ -88,17 +93,6 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, *args, origi
 def _hijacked_get_multicond_learned_conditioning(*args, original_function, **kwargs):
     global_state.old_webui_is_negative = False
     return original_function(*args, **kwargs)
-
-
-def _interpolate_conds(flattened_conds, consecutive_ranges, tensor_builders, total_steps, is_hires):
-    cond_tensors = [tensor_builder.build(flattened_conds[begin:end], empty_cond.get())
-                    for begin, end, tensor_builder
-                    in zip(consecutive_ranges[:-1], consecutive_ranges[1:], tensor_builders)]
-
-    schedules = [_sample_tensor_schedules(cond_tensor, total_steps, is_hires)
-              for cond_tensor in cond_tensors]
-
-    return schedules
 
 
 def _parse_tensor_builders(prompts, total_steps):
