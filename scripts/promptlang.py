@@ -89,8 +89,9 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, *args, origi
 
 @prompt_parser_hijacker.hijack('get_multicond_learned_conditioning')
 def _hijacked_get_multicond_learned_conditioning(*args, original_function, **kwargs):
+    res = original_function(*args, **kwargs)
     global_state.old_webui_is_negative = False
-    return original_function(*args, **kwargs)
+    return res
 
 
 def _parse_tensor_builders(prompts, total_steps):
