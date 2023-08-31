@@ -186,14 +186,14 @@ class TensorCondWrapper:
 
     @staticmethod
     def from_cp_values(cp_values):
-        return TensorCondWrapper(cp_values[0])
+        return TensorCondWrapper(next(iter(cp_values)))
 
     def size(self, *args, **kwargs):
         return self.original_cond.size(*args, **kwargs)
 
     def extend_like(self, that, empty):
         missing_size = max(0, that.size(0) - self.original_cond.size(0)) // 77
-        return TensorCondWrapper(torch.concatenate([self.original_cond] + [empty] * missing_size))
+        return TensorCondWrapper(torch.concatenate([self.original_cond] + [empty.original_cond] * missing_size))
 
     def to_cp_values(self):
         return [self.original_cond]
