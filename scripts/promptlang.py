@@ -76,15 +76,13 @@ def _hijacked_get_learned_conditioning(model, prompts, total_steps, *args, origi
         else:
             global_state.negative_schedules = schedules[0]
 
-    if not isinstance(schedules[0][0].cond, torch.Tensor):
-        # sdxl
-        schedules = [
-            [
-                prompt_parser.ScheduledPromptConditioning(cond=schedule.cond.original_cond, end_at_step=schedule.end_at_step)
-                for schedule in subschedules
-            ]
-            for subschedules in schedules
+    schedules = [
+        [
+            prompt_parser.ScheduledPromptConditioning(cond=schedule.cond.original_cond, end_at_step=schedule.end_at_step)
+            for schedule in subschedules
         ]
+        for subschedules in schedules
+    ]
 
     return schedules
 
