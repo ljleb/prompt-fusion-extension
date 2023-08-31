@@ -97,7 +97,7 @@ class AlternationExpression:
         else:
             speed = _eval_float(self.__speed, steps_range, total_steps, context)
 
-        if speed is None or speed == 1:
+        if speed is None:
             tensor_builder.append('[')
             for expr_i, expr in enumerate(self.__expressions):
                 if expr_i >= 1:
