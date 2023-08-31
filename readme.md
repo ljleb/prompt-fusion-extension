@@ -9,6 +9,9 @@ Prompt Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/
 # catmull-rom curve prompt interpolation
 [night light:magical forest:norvegian territory: 5, 15, 25:catmull]
 
+# alternation interpolation
+[ufo|a strange sight:0.5]
+
 # linear attention interpolation
 (fire extinguisher: 1.0, 2.0)
 

@@ -40,6 +40,7 @@ def _parsers():
         parse_positive_attention,
         parse_negative_attention,
         parse_editing,
+        parse_alternation,
         parse_interpolation,
         parse_unrestricted_text,
     )
@@ -184,6 +185,40 @@ def parse_interpolation_step(prompt, stoppers):
     raise ValueError
 
 
+def parse_alternation(prompt, stoppers):
+    prompt, _ = parse_open_square(prompt, stoppers)
+    prompt, exprs = parse_alternation_exprs(prompt, stoppers)
+    prompt, speed = parse_alternation_speed(prompt, stoppers)
+    prompt, _ = parse_close_square(prompt, stoppers)
+    return ParseResult(prompt=prompt, expr=ast.AlternationExpression(exprs, speed))
+
+
+def parse_alternation_exprs(prompt, stoppers):
+    exprs = []
+
+    try:
+        while True:
+            prompt, expr = parse_list_expression(prompt, {'|', ':', ']'})
+            exprs.append(expr)
+            prompt, _ = parse_vertical_bar(prompt, stoppers)
+    except ValueError:
+        if len(exprs) < 2:
+            raise
+
+    return ParseResult(prompt=prompt, expr=exprs)
+
+
+def parse_alternation_speed(prompt, stoppers):
+    try:
+        prompt, _ = parse_colon(prompt, stoppers)
+        prompt, speed = parse_step(prompt, stoppers)
+        return ParseResult(prompt=prompt, expr=speed)
+    except ValueError:
+        pass
+
+    return ParseResult(prompt=prompt, expr=1)
+
+
 def parse_editing(prompt, stoppers):
     prompt, _ = parse_open_square(prompt, stoppers)
     prompt, exprs = parse_editing_exprs(prompt, stoppers)
@@ -201,7 +236,7 @@ def parse_editing_exprs(prompt, stoppers):
 
     try:
         for _ in range(2):
-            prompt_tmp, expr = parse_list_expression(prompt, {':', ']'})
+            prompt_tmp, expr = parse_list_expression(prompt, {'|', ':', ']'})
             prompt, _ = parse_colon(prompt_tmp, stoppers)
             exprs.append(expr)
     except ValueError:
@@ -292,6 +327,10 @@ def parse_comma(prompt, stoppers):
 
 def parse_colon(prompt, stoppers):
     return parse_token(prompt, whitespace_tail_regex(re.escape(':'), stoppers))
+
+
+def parse_vertical_bar(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(re.escape('|'), stoppers))
 
 
 def parse_open_square(prompt, stoppers):
