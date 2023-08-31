@@ -118,6 +118,8 @@ class AlternationExpression:
     def get_interpolation_function(self, speed, exprs, steps_range, total_steps):
         def compute_wrap(control_points, params: interpolation_tensor.InterpolationParams):
             wrapped_t = math.fmod((params.t * total_steps - steps_range[0]) / (len(exprs) - 1) * speed, 1.0)
+            if wrapped_t < 0:
+                wrapped_t = wrapped_t + 1
             new_params = interpolation_tensor.InterpolationParams(wrapped_t, *params[1:])
             return interpolation_functions.compute_linear(control_points, new_params)
 
