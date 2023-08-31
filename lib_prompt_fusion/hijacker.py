@@ -1,6 +1,3 @@
-from modules import prompt_parser
-
-
 class ModuleHijacker:
     def __init__(self, module):
         self.__module = module
@@ -30,7 +27,7 @@ class ModuleHijacker:
         if not hasattr(module, hijacker_attribute):
             module_hijacker = ModuleHijacker(module)
             setattr(module, hijacker_attribute, module_hijacker)
-            register_uninstall(lambda: delattr(prompt_parser, hijacker_attribute))
+            register_uninstall(lambda: delattr(module, hijacker_attribute))
             register_uninstall(module_hijacker.reset_module)
             return module_hijacker
         else:

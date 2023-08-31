@@ -1,8 +1,6 @@
-from lib_prompt_fusion.catmull import compute_catmull
-from lib_prompt_fusion.bezier import compute_on_curve_with_points as compute_bezier
-from lib_prompt_fusion.linear import compute_linear
+from lib_prompt_fusion import interpolation_functions
 from lib_prompt_fusion.t_scaler import scale_t
-from lib_prompt_fusion.interpolation_tensor import InterpolationTensorBuilder
+from lib_prompt_fusion import interpolation_tensor
 
 
 class ListExpression:
@@ -46,7 +44,11 @@ class InterpolationExpression:
             steps[-1] = LiftExpression(str(steps_range[1] - 1))
 
         for i, step in enumerate(steps):
+            if step is None:
+                continue
+
             step = _eval_float(step, steps_range, total_steps, context)
+
             if 0 < step < 1:
                 step *= total_steps
             else:
@@ -54,16 +56,31 @@ class InterpolationExpression:
 
             steps[i] = int(step)
 
+        i = 1
+        while i < len(steps):
+            none_len = 0
+            while steps[i + none_len] is None:
+                none_len += 1
+
+            min_step, max_step = steps[i - 1], steps[i + none_len]
+
+            for j in range(none_len):
+                steps[i + j] = min_step + (max_step - min_step) * (j + 1) / (none_len + 1)
+
+            i += 1 + none_len
+
         interpolation_function = {
-            'catmull': compute_catmull,
-            'linear': compute_linear,
-            'bezier': compute_bezier,
+            'linear': interpolation_functions.compute_linear,
+            'bezier': interpolation_functions.compute_bezier,
+            'catmull': interpolation_functions.compute_catmull,
         }[self.__function_name]
 
-        def steps_scale_t(t, conditionings):
-            scaled_t = (t * total_steps - steps[0]) / max(1, steps[-1] - steps[0])
+        def steps_scale_t(conds, params: interpolation_tensor.InterpolationParams):
+            scaled_t = (params.t * total_steps - steps[0]) / max(1, steps[-1] - steps[0])
             scaled_t = scale_t(scaled_t, steps)
-            return interpolation_function(scaled_t, conditionings)
+
+            new_params = interpolation_tensor.InterpolationParams(scaled_t, *params[1:])
+            return interpolation_function(conds, new_params)
 
         return steps_scale_t
 
@@ -147,16 +164,16 @@ class WeightInterpolationExpression:
 
 
 class DeclarationExpression:
-    def __init__(self, symbol, parameters, nested, expression):
+    def __init__(self, symbol, parameters, value, target):
         self.__symbol = symbol
-        self.__nested = nested
-        self.__expression = expression
+        self.__value = value
+        self.__target = target
         self.__parameters = parameters
 
     def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
         updated_context = dict(context)
-        updated_context[self.__symbol] = (self.__nested, self.__parameters)
-        self.__expression.extend_tensor(tensor_builder, steps_range, total_steps, updated_context)
+        updated_context[self.__symbol] = (self.__value, self.__parameters)
+        self.__target.extend_tensor(tensor_builder, steps_range, total_steps, updated_context)
 
 
 class SubstitutionExpression:
@@ -182,5 +199,5 @@ class LiftExpression:
 
 def _eval_float(expression, steps_range, total_steps, context):
     mock_database = ['']
-    expression.extend_tensor(InterpolationTensorBuilder(prompt_database=mock_database), steps_range, total_steps, context)
+    expression.extend_tensor(interpolation_tensor.InterpolationTensorBuilder(prompt_database=mock_database), steps_range, total_steps, context)
     return float(mock_database[0])
