@@ -39,8 +39,8 @@ def _parsers():
         parse_substitution,
         parse_positive_attention,
         parse_negative_attention,
-        parse_alternation,
         parse_editing,
+        parse_alternation,
         parse_interpolation,
         parse_unrestricted_text,
     )
@@ -185,32 +185,6 @@ def parse_interpolation_step(prompt, stoppers):
     raise ValueError
 
 
-def parse_editing(prompt, stoppers):
-    prompt, _ = parse_open_square(prompt, stoppers)
-    prompt, exprs = parse_editing_exprs(prompt, stoppers)
-    try:
-        prompt, step = parse_step(prompt, stoppers)
-    except ValueError:
-        step = None
-
-    prompt, _ = parse_close_square(prompt, stoppers)
-    return ParseResult(prompt=prompt, expr=ast.EditingExpression(exprs, step))
-
-
-def parse_editing_exprs(prompt, stoppers):
-    exprs = []
-
-    try:
-        for _ in range(2):
-            prompt_tmp, expr = parse_list_expression(prompt, {':', ']'})
-            prompt, _ = parse_colon(prompt_tmp, stoppers)
-            exprs.append(expr)
-    except ValueError:
-        pass
-
-    return ParseResult(prompt=prompt, expr=exprs)
-
-
 def parse_alternation(prompt, stoppers):
     prompt, _ = parse_open_square(prompt, stoppers)
     prompt, exprs = parse_alternation_exprs(prompt, stoppers)
@@ -243,6 +217,32 @@ def parse_alternation_speed(prompt, stoppers):
         pass
 
     return ParseResult(prompt=prompt, expr=1)
+
+
+def parse_editing(prompt, stoppers):
+    prompt, _ = parse_open_square(prompt, stoppers)
+    prompt, exprs = parse_editing_exprs(prompt, stoppers)
+    try:
+        prompt, step = parse_step(prompt, stoppers)
+    except ValueError:
+        step = None
+
+    prompt, _ = parse_close_square(prompt, stoppers)
+    return ParseResult(prompt=prompt, expr=ast.EditingExpression(exprs, step))
+
+
+def parse_editing_exprs(prompt, stoppers):
+    exprs = []
+
+    try:
+        for _ in range(2):
+            prompt_tmp, expr = parse_list_expression(prompt, {'|', ':', ']'})
+            prompt, _ = parse_colon(prompt_tmp, stoppers)
+            exprs.append(expr)
+    except ValueError:
+        pass
+
+    return ParseResult(prompt=prompt, expr=exprs)
 
 
 def parse_negative_attention(prompt, stoppers):
