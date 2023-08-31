@@ -60,7 +60,7 @@ if __name__ == '__main__':
     def sample(slerp_scale, color):
         for i in range(size):
             t = i / size
-            params = interpolation_tensor.InterpolationParams(t, i, slerp_scale, 0.0001)
+            params = interpolation_tensor.InterpolationParams(t, i, size, slerp_scale, 0.0001)
             point = origin + compute_linear(points - origin, params)
             try:
                 turtle_tool.goto(tuple(float(p) * 100. for p in point))

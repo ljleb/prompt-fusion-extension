@@ -1,3 +1,4 @@
+import math
 from lib_prompt_fusion import interpolation_functions
 from lib_prompt_fusion.t_scaler import scale_t
 from lib_prompt_fusion import interpolation_tensor
@@ -83,6 +84,43 @@ class InterpolationExpression:
             return interpolation_function(conds, new_params)
 
         return steps_scale_t
+
+
+class AlternationExpression:
+    def __init__(self, expressions, speed):
+        self.__expressions = expressions
+        self.__speed = speed
+
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context):
+        if self.__speed is None:
+            speed = None
+        else:
+            speed = _eval_float(self.__speed, steps_range, total_steps, context)
+
+        if speed is None or speed < 1:
+            tensor_builder.append('[')
+            for expr_i, expr in enumerate(self.__expressions):
+                if expr_i >= 1:
+                    tensor_builder.append('|')
+                expr.extend_tensor(tensor_builder, steps_range, total_steps, context)
+            tensor_builder.append(']')
+            return
+
+        def tensor_updater(expr):
+            return lambda t: expr.extend_tensor(t, steps_range, total_steps, context)
+
+        tensor_builder.extrude(
+            [tensor_updater(expr) for expr in self.__expressions],
+            self.get_interpolation_function(speed, steps_range, total_steps))
+
+    def get_interpolation_function(self, speed, steps_range, total_steps):
+        steps_range = tuple(s - 1 for s in steps_range)
+        def compute_wrap(control_points, params: interpolation_tensor.InterpolationParams):
+            wrapped_t = math.fmod((params.t * total_steps - steps_range[0]) / len(self.__expressions) / speed, 1.0)
+            new_params = interpolation_tensor.InterpolationParams(wrapped_t, *params[1:])
+            return interpolation_functions.compute_linear(control_points, new_params)
+
+        return compute_wrap
 
 
 class EditingExpression:

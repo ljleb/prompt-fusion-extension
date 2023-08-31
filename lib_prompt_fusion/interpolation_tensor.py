@@ -7,6 +7,7 @@ from typing import NamedTuple
 class InterpolationParams(NamedTuple):
     t: float
     step: int
+    total_steps: int
     slerp_scale: float
     slerp_epsilon: float
 

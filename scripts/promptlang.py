@@ -1,5 +1,4 @@
 import gradio as gr
-import torch
 from lib_prompt_fusion import hijacker, empty_cond, global_state, interpolation_tensor, prompt_parser as prompt_fusion_parser
 from modules import scripts, script_callbacks, prompt_parser, shared
 
@@ -123,7 +122,7 @@ def _sample_tensor_schedules(tensor, steps, is_hires):
 
     for step in range(steps):
         origin_cond = global_state.get_origin_cond_at(step, is_hires)
-        params = interpolation_tensor.InterpolationParams(step / steps, step, global_state.get_slerp_scale(), global_state.get_slerp_epsilon())
+        params = interpolation_tensor.InterpolationParams(step / steps, step, steps, global_state.get_slerp_scale(), global_state.get_slerp_epsilon())
         schedule_cond = tensor.interpolate(params, origin_cond)
         if schedules and schedules[-1].cond == schedule_cond:
             schedules[-1] = prompt_parser.ScheduledPromptConditioning(end_at_step=step, cond=schedules[-1].cond)
