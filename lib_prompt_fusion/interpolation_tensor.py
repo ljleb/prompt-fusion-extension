@@ -122,17 +122,13 @@ class InterpolationTensorBuilder:
             return [InterpolationTensorBuilder.__build_conditionings_tensor(e, conds) for e in tensor]
 
     def __resize_uniformly(self, conds, max_cond_size: int, empty_cond):
-        conds[:] = ([self.__resize_schedule(schedule, max_cond_size, empty_cond) for schedule in schedules]
-                    for schedules in conds)
+        conds[:] = ([
+            prompt_parser.ScheduledPromptConditioning(
+                cond=schedule.cond.resize_schedule(max_cond_size, empty_cond),
+                end_at_step=schedule.end_at_step
+            ) for schedule in schedules
+        ] for schedules in conds)
         return conds
-
-    def __resize_schedule(self, schedule, target_size, empty_cond):
-        cond_missing_size = (target_size - schedule.cond.size(0)) // 77
-        if cond_missing_size <= 0:
-            return schedule
-
-        resized_cond = torch.concatenate([schedule.cond] + [empty_cond] * cond_missing_size)
-        return prompt_parser.ScheduledPromptConditioning(cond=resized_cond, end_at_step=schedule.end_at_step)
 
     @staticmethod
     def __max_cond_size(conds):
@@ -160,6 +156,15 @@ class DictCondWrapper:
         extended = DictCondWrapper(self.original_cond.copy())
         extended.original_cond['crossattn'] = torch.concatenate([self.original_cond['crossattn']] + [empty.original_cond['crossattn']] * missing_size)
         return extended
+
+    def resize_schedule(self, target_size, empty_cond):
+        cond_missing_size = (target_size - self.size(0)) // 77
+        if cond_missing_size <= 0:
+            return self
+
+        resized_cond = self.original_cond.copy()
+        resized_cond['crossattn'] = torch.concatenate([self.original_cond['crossattn']] + [empty_cond.original_cond['crossattn']] * cond_missing_size)
+        return DictCondWrapper(resized_cond)
 
     def to_cp_values(self):
         return list(self.original_cond.values())
@@ -194,6 +199,13 @@ class TensorCondWrapper:
     def extend_like(self, that, empty):
         missing_size = max(0, that.size(0) - self.original_cond.size(0)) // 77
         return TensorCondWrapper(torch.concatenate([self.original_cond] + [empty.original_cond] * missing_size))
+
+    def resize_schedule(self, target_size, empty_cond):
+        cond_missing_size = (target_size - self.original_cond.size(0)) // 77
+        if cond_missing_size <= 0:
+            return self
+
+        return TensorCondWrapper(torch.concatenate([self.original_cond] + [empty_cond.original_cond] * cond_missing_size))
 
     def to_cp_values(self):
         return [self.original_cond]
