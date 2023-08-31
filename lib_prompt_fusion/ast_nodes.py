@@ -97,7 +97,7 @@ class AlternationExpression:
         else:
             speed = _eval_float(self.__speed, steps_range, total_steps, context)
 
-        if speed is None or speed < 1:
+        if speed is None or speed == 1:
             tensor_builder.append('[')
             for expr_i, expr in enumerate(self.__expressions):
                 if expr_i >= 1:
@@ -109,14 +109,15 @@ class AlternationExpression:
         def tensor_updater(expr):
             return lambda t: expr.extend_tensor(t, steps_range, total_steps, context)
 
-        tensor_builder.extrude(
-            [tensor_updater(expr) for expr in self.__expressions],
-            self.get_interpolation_function(speed, steps_range, total_steps))
+        exprs = self.__expressions + [self.__expressions[0]]
 
-    def get_interpolation_function(self, speed, steps_range, total_steps):
-        steps_range = tuple(s - 1 for s in steps_range)
+        tensor_builder.extrude(
+            [tensor_updater(expr) for expr in exprs],
+            self.get_interpolation_function(speed, exprs, steps_range, total_steps))
+
+    def get_interpolation_function(self, speed, exprs, steps_range, total_steps):
         def compute_wrap(control_points, params: interpolation_tensor.InterpolationParams):
-            wrapped_t = math.fmod((params.t * total_steps - steps_range[0]) / len(self.__expressions) / speed, 1.0)
+            wrapped_t = math.fmod((params.t * total_steps - steps_range[0]) / (len(exprs) - 1) * speed, 1.0)
             new_params = interpolation_tensor.InterpolationParams(wrapped_t, *params[1:])
             return interpolation_functions.compute_linear(control_points, new_params)
 
