@@ -216,7 +216,7 @@ def parse_alternation_speed(prompt, stoppers):
     except ValueError:
         pass
 
-    return ParseResult(prompt=prompt, expr=1)
+    return ParseResult(prompt=prompt, expr=None)
 
 
 def parse_editing(prompt, stoppers):
