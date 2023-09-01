@@ -88,10 +88,12 @@ functional_parse_test_cases = [
     ('$a = a lot of animals\n$b($c) = I love $c\n$b($a)', 'I love a lot of animals'),
     ('$a($b) = prompt with $b\n$c($d) = yeay $d\n$a($c(dog))', 'prompt with yeay dog'),
     ('[a|b|c]', '[a|b|c]'),
-    ('[a|b|c:1]', '[a|b|c]'),
+    ('[a|b|c:]', '[a|b|c]'),
+    ('[a|b|c:1]', {'a', 'b', 'c'}),
     ('[a|b|c:2]', {'a', 'b', 'c'}),
     ('[a|b|c:0.5]', {'a', 'b', 'c'}),
     ('[a|b|c:1.1]', {'a', 'b', 'c'}),
+    ('[[[Imperial Yellow|Amber]:[Ruby|Plum|Bronze]:9]::39]',)*2,
 ]
 
 
