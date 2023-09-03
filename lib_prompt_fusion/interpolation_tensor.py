@@ -25,7 +25,7 @@ class InterpolationTensor:
     def interpolate_rec(self, params: InterpolationParams, axis: int, origin_cond):
         tensor_axes = len(self.__interpolation_functions) - axis
         if tensor_axes == 0:
-            if type(self.__conditionings_tensor) is not list:
+            if not isinstance(self.__conditionings_tensor, list):
                 return self.__conditionings_tensor
 
             schedule = None
@@ -38,17 +38,26 @@ class InterpolationTensor:
         interpolation_function, control_points_functions = self.__interpolation_functions[axis]
         if tensor_axes == 1:
             control_points = list(self.__conditionings_tensor)
-        else:
-            control_points = [
-                InterpolationTensor(sub_tensor, self.__interpolation_functions, self.__empty_cond).interpolate_rec(params, axis + 1, origin_cond)
-                for sub_tensor in self.__conditionings_tensor
-            ]
 
-        for i, nested_functions in enumerate(control_points_functions):
-            control_points[i] = InterpolationTensor(control_points[i], nested_functions, self.__empty_cond).interpolate_rec(params, 0, origin_cond)
+            for i, nested_functions in enumerate(control_points_functions):
+                control_points[i] = InterpolationTensor(control_points[i], nested_functions, self.__empty_cond).interpolate_rec(params, 0, origin_cond)
+        else:
+            control_points = []
+            for sub_tensor, nested_functions in zip(self.__conditionings_tensor, control_points_functions):
+                if conds_depth(sub_tensor) >= tensor_axes:
+                    sub_tensor = [
+                        InterpolationTensor(sub_sub_tensor, nested_functions, self.__empty_cond).interpolate_rec(params, 0, origin_cond)
+                        for sub_sub_tensor in zip(*sub_tensor)
+                    ]
+
+                control_points.append(InterpolationTensor(sub_tensor, self.__interpolation_functions, self.__empty_cond).interpolate_rec(params, axis + 1, origin_cond))
 
         CondWrapper, control_points_values = conds_to_cp_values(control_points)
         return CondWrapper.from_cp_values(interpolation_function(control_points, params) for control_points in control_points_values)
+
+
+def conds_depth(tensor):
+    return min(conds_depth(sub_tensor) + 1 for sub_tensor in tensor) if isinstance(tensor, list) else -1
 
 
 def conds_to_cp_values(conds):
