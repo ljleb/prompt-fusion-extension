@@ -1,4 +1,5 @@
 import dataclasses
+
 import torch
 from modules import prompt_parser
 from typing import NamedTuple
@@ -13,42 +14,34 @@ class InterpolationParams(NamedTuple):
 
 
 class InterpolationTensor:
-    def __init__(self, conditionings_tensor, interpolation_functions, empty_cond: torch.Tensor):
-        self.__conditionings_tensor = conditionings_tensor
-        self.__interpolation_functions = interpolation_functions
+    def __init__(self, sub_tensors, interpolation_function, empty_cond: torch.Tensor):
+        self.__sub_tensors = sub_tensors
+        self.__interpolation_function = interpolation_function
         self.__empty_cond = empty_cond
 
     def interpolate(self, params: InterpolationParams, origin_cond):
-        cond = self.interpolate_rec(params, 0, origin_cond)
+        cond = self.interpolate_rec(params, origin_cond)
         return cond + origin_cond.extend_like(cond, self.__empty_cond)
 
-    def interpolate_rec(self, params: InterpolationParams, axis: int, origin_cond):
-        tensor_axes = len(self.__interpolation_functions) - axis
-        if tensor_axes == 0:
-            if type(self.__conditionings_tensor) is not list:
-                return self.__conditionings_tensor
+    def interpolate_rec(self, params: InterpolationParams, origin_cond):
+        if self.__interpolation_function is None:
+            return self.to_cond_delta(params.step, origin_cond)
 
-            schedule = None
-            for schedule in self.__conditionings_tensor:
-                if schedule.end_at_step >= params.step:
-                    break
-
-            return schedule.cond.extend_like(origin_cond, self.__empty_cond) - origin_cond.extend_like(schedule.cond, self.__empty_cond)
-
-        interpolation_function, control_points_functions = self.__interpolation_functions[axis]
-        if tensor_axes == 1:
-            control_points = list(self.__conditionings_tensor)
-        else:
-            control_points = [
-                InterpolationTensor(sub_tensor, self.__interpolation_functions, self.__empty_cond).interpolate_rec(params, axis + 1, origin_cond)
-                for sub_tensor in self.__conditionings_tensor
-            ]
-
-        for i, nested_functions in enumerate(control_points_functions):
-            control_points[i] = InterpolationTensor(control_points[i], nested_functions, self.__empty_cond).interpolate_rec(params, 0, origin_cond)
+        control_points = [
+            sub_tensor.interpolate_rec(params, origin_cond)
+            for sub_tensor in self.__sub_tensors
+        ]
 
         CondWrapper, control_points_values = conds_to_cp_values(control_points)
-        return CondWrapper.from_cp_values(interpolation_function(control_points, params) for control_points in control_points_values)
+        return CondWrapper.from_cp_values(self.__interpolation_function(control_points, params) for control_points in control_points_values)
+
+    def to_cond_delta(self, step, origin_cond):
+        schedule = None
+        for schedule in self.__sub_tensors:
+            if schedule.end_at_step >= step:
+                break
+
+        return schedule.cond.extend_like(origin_cond, self.__empty_cond) - origin_cond.extend_like(schedule.cond, self.__empty_cond)
 
 
 def conds_to_cp_values(conds):
@@ -110,17 +103,22 @@ class InterpolationTensorBuilder:
     def build(self, conds, empty_cond):
         max_cond_size = self.__max_cond_size(conds)
         conds = self.__resize_uniformly(conds, max_cond_size, empty_cond)
-        return InterpolationTensor(
-            InterpolationTensorBuilder.__build_conditionings_tensor(self.__indices_tensor, conds),
-            self.__interpolation_functions,
-            empty_cond)
+        return InterpolationTensorBuilder.__build_conditionings_tensor(self.__indices_tensor, self.__interpolation_functions, conds, empty_cond)
 
     @staticmethod
-    def __build_conditionings_tensor(tensor, conds):
+    def __build_conditionings_tensor(tensor, int_funcs, conds, empty_cond):
         if type(tensor) is int:
-            return conds[tensor]
+            return InterpolationTensor(conds[tensor], None, empty_cond)
         else:
-            return [InterpolationTensorBuilder.__build_conditionings_tensor(e, conds) for e in tensor]
+            int_func, nested_int_funcs = int_funcs[0]
+            return InterpolationTensor(
+                [
+                    InterpolationTensorBuilder.__build_conditionings_tensor(sub_tensor, nested_int_funcs + int_funcs[1:], conds, empty_cond)
+                    for sub_tensor, nested_int_funcs in zip(tensor, nested_int_funcs)
+                ],
+                int_func,
+                empty_cond,
+            )
 
     def __resize_uniformly(self, conds, max_cond_size: int, empty_cond):
         conds[:] = ([
