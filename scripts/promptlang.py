@@ -123,7 +123,7 @@ def _sample_tensor_schedules(tensor, steps, is_hires):
     for step in range(steps):
         origin_cond = global_state.get_origin_cond_at(step, is_hires)
         params = interpolation_tensor.InterpolationParams(step / steps, step, steps, global_state.get_slerp_scale(), global_state.get_slerp_epsilon())
-        schedule_cond = tensor.interpolate(params, origin_cond)
+        schedule_cond = tensor.interpolate(params, origin_cond, empty_cond.get())
         if schedules and schedules[-1].cond == schedule_cond:
             schedules[-1] = prompt_parser.ScheduledPromptConditioning(end_at_step=step, cond=schedules[-1].cond)
         else:
