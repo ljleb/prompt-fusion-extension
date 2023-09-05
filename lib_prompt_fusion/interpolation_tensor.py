@@ -1,5 +1,4 @@
 import dataclasses
-
 import torch
 from modules import prompt_parser
 from typing import NamedTuple
@@ -14,34 +13,33 @@ class InterpolationParams(NamedTuple):
 
 
 class InterpolationTensor:
-    def __init__(self, sub_tensors, interpolation_function, empty_cond: torch.Tensor):
+    def __init__(self, sub_tensors, interpolation_function):
         self.__sub_tensors = sub_tensors
         self.__interpolation_function = interpolation_function
-        self.__empty_cond = empty_cond
 
-    def interpolate(self, params: InterpolationParams, origin_cond):
-        cond = self.interpolate_rec(params, origin_cond)
-        return cond + origin_cond.extend_like(cond, self.__empty_cond)
+    def interpolate(self, params: InterpolationParams, origin_cond, empty_cond):
+        cond_delta = self.interpolate_cond_delta_rec(params, origin_cond, empty_cond)
+        return cond_delta + origin_cond.extend_like(cond_delta, empty_cond)
 
-    def interpolate_rec(self, params: InterpolationParams, origin_cond):
+    def interpolate_cond_delta_rec(self, params: InterpolationParams, origin_cond, empty_cond):
         if self.__interpolation_function is None:
-            return self.to_cond_delta(params.step, origin_cond)
+            return self.to_cond_delta(params.step, origin_cond, empty_cond)
 
         control_points = [
-            sub_tensor.interpolate_rec(params, origin_cond)
+            sub_tensor.interpolate_cond_delta_rec(params, origin_cond, empty_cond)
             for sub_tensor in self.__sub_tensors
         ]
 
         CondWrapper, control_points_values = conds_to_cp_values(control_points)
         return CondWrapper.from_cp_values(self.__interpolation_function(control_points, params) for control_points in control_points_values)
 
-    def to_cond_delta(self, step, origin_cond):
+    def to_cond_delta(self, step, origin_cond, empty_cond):
         schedule = None
         for schedule in self.__sub_tensors:
             if schedule.end_at_step >= step:
                 break
 
-        return schedule.cond.extend_like(origin_cond, self.__empty_cond) - origin_cond.extend_like(schedule.cond, self.__empty_cond)
+        return schedule.cond.extend_like(origin_cond, empty_cond) - origin_cond.extend_like(schedule.cond, empty_cond)
 
 
 def conds_to_cp_values(conds):
@@ -103,31 +101,33 @@ class InterpolationTensorBuilder:
     def build(self, conds, empty_cond):
         max_cond_size = self.__max_cond_size(conds)
         conds = self.__resize_uniformly(conds, max_cond_size, empty_cond)
-        return InterpolationTensorBuilder.__build_conditionings_tensor(self.__indices_tensor, self.__interpolation_functions, conds, empty_cond)
+        return InterpolationTensorBuilder.__build_conditionings_tensor(self.__indices_tensor, self.__interpolation_functions, conds)
 
     @staticmethod
-    def __build_conditionings_tensor(tensor, int_funcs, conds, empty_cond):
+    def __build_conditionings_tensor(tensor, int_funcs, conds):
         if type(tensor) is int:
-            return InterpolationTensor(conds[tensor], None, empty_cond)
+            return InterpolationTensor(conds[tensor], None)
         else:
             int_func, nested_int_funcs = int_funcs[0]
             return InterpolationTensor(
                 [
-                    InterpolationTensorBuilder.__build_conditionings_tensor(sub_tensor, nested_int_funcs + int_funcs[1:], conds, empty_cond)
+                    InterpolationTensorBuilder.__build_conditionings_tensor(sub_tensor, nested_int_funcs + int_funcs[1:], conds)
                     for sub_tensor, nested_int_funcs in zip(tensor, nested_int_funcs)
                 ],
                 int_func,
-                empty_cond,
             )
 
     def __resize_uniformly(self, conds, max_cond_size: int, empty_cond):
-        conds[:] = ([
-            prompt_parser.ScheduledPromptConditioning(
-                cond=schedule.cond.resize_schedule(max_cond_size, empty_cond),
-                end_at_step=schedule.end_at_step
-            ) for schedule in schedules
-        ] for schedules in conds)
-        return conds
+        return [
+            [
+                prompt_parser.ScheduledPromptConditioning(
+                    cond=schedule.cond.resize_schedule(max_cond_size, empty_cond),
+                    end_at_step=schedule.end_at_step
+                )
+                for schedule in schedules
+            ]
+            for schedules in conds
+        ]
 
     @staticmethod
     def __max_cond_size(conds):

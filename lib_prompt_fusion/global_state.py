@@ -9,10 +9,11 @@ negative_schedules_hires: Optional[List[prompt_parser.ScheduledPromptConditionin
 
 
 def get_origin_cond_at(step: int, is_hires: bool = False):
-    if not negative_schedules or not shared.opts.data.get('prompt_fusion_slerp_negative_origin', False):
+    fallback_schedules = negative_schedules_hires if is_hires else negative_schedules
+    if not fallback_schedules or not shared.opts.data.get('prompt_fusion_slerp_negative_origin', False):
         return empty_cond.get()
 
-    for schedule in (negative_schedules_hires if is_hires else negative_schedules):
+    for schedule in fallback_schedules:
         if schedule.end_at_step >= step:
             return schedule.cond
 
