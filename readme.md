@@ -41,6 +41,9 @@ Prompt interpolation is also similar to [Prompt Blending](https://github.com/amo
 
 The attention interpolation feature is similar to [Shift Attention](https://github.com/yownas/shift-attention), which allows to generate multiple images with slight variations in the attention given to certain parts of the prompt. Unlike Shift Attention, instead of generating multiple images, Prompt Fusion allows to shift the attention of certain parts of a prompt during the sampling process of *a single image*.
 
+## Usage
+- Check the [wiki pages](https://github.com/ljleb/fusion/wiki) for the extension documentation.
+
 ## Examples
 
 ### 1. Influencing the beginning of the sampling process
@@ -79,9 +82,6 @@ The following webui releases are officially supported:
 7. click on **Apply and restart UI**.
 
 Alternatively, instead of steps 6 and 7, you can restart the webui completely.
-
-## Usage
-- Check the [wiki pages](https://github.com/ljleb/fusion/wiki) for the extension documentation.
 
 ## Related Projects
 
