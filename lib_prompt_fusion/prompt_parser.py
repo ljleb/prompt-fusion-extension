@@ -281,6 +281,11 @@ def parse_attention_weights(prompt, stoppers):
 
 def parse_step(prompt, stoppers):
     try:
+        prompt, step = parse_int_not_float(prompt, stoppers)
+        return ParseResult(prompt=prompt, expr=ast.LiftExpression(step))
+    except ValueError:
+        pass
+    try:
         prompt, step = parse_float(prompt, stoppers)
         return ParseResult(prompt=prompt, expr=ast.LiftExpression(step))
     except ValueError:
@@ -310,6 +315,10 @@ def parse_symbol_text(prompt, stoppers):
 
 def parse_float(prompt, stoppers):
     return parse_token(prompt, whitespace_tail_regex(r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)', stoppers))
+
+
+def parse_int_not_float(prompt, stoppers):
+    return parse_token(prompt, whitespace_tail_regex(r'[+-]?\d+(?!\.)', stoppers))
 
 
 def parse_dollar(prompt):
