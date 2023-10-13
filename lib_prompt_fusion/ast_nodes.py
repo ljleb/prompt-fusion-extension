@@ -8,12 +8,12 @@ class ListExpression:
     def __init__(self, expressions):
         self.__expressions = expressions
 
-    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires):
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling):
         if not self.__expressions:
             return
 
         def expr_extend_tensor(expr):
-            expr.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires)
+            expr.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling)
 
         expr_extend_tensor(self.__expressions[0])
         for expression in self.__expressions[1:]:
@@ -29,15 +29,15 @@ class InterpolationExpression:
         self.__steps = steps
         self.__function_name = function_name if function_name is not None else 'linear'
 
-    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires):
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling):
         def tensor_updater(expr):
-            return lambda t: expr.extend_tensor(t, steps_range, total_steps, context, is_hires)
+            return lambda t: expr.extend_tensor(t, steps_range, total_steps, context, is_hires, use_old_scheduling)
 
         tensor_builder.extrude(
             [tensor_updater(expr) for expr in self.__expressions],
-            self.get_interpolation_function(steps_range, total_steps, context, is_hires))
+            self.get_interpolation_function(steps_range, total_steps, context, is_hires, use_old_scheduling))
 
-    def get_interpolation_function(self, steps_range, total_steps, context, is_hires):
+    def get_interpolation_function(self, steps_range, total_steps, context, is_hires, use_old_scheduling):
         steps = list(self.__steps)
         if steps[0] is None:
             steps[0] = LiftExpression(str(steps_range[0] - 1))
@@ -48,14 +48,16 @@ class InterpolationExpression:
             if step is None:
                 continue
 
-            step = _eval_int_or_float(step, steps_range, total_steps, context, is_hires)
+            step = _eval_int_or_float(step, steps_range, total_steps, context, is_hires, use_old_scheduling)
 
-            if isinstance(step, float):
-                step = int((step - int(is_hires)) * total_steps)
+            if use_old_scheduling and 0 < step < 1:
+                step *= total_steps
+            elif not use_old_scheduling and isinstance(step, float):
+                step = (step - int(is_hires)) * total_steps
             else:
                 step += 1
 
-            steps[i] = step
+            steps[i] = int(step)
 
         i = 1
         while i < len(steps):
@@ -91,23 +93,23 @@ class AlternationExpression:
         self.__expressions = expressions
         self.__speed = speed
 
-    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires):
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling):
         if self.__speed is None:
             speed = None
         else:
-            speed = _eval_int_or_float(self.__speed, steps_range, total_steps, context, is_hires)
+            speed = _eval_int_or_float(self.__speed, steps_range, total_steps, context, is_hires, use_old_scheduling)
 
         if speed is None:
             tensor_builder.append('[')
             for expr_i, expr in enumerate(self.__expressions):
                 if expr_i >= 1:
                     tensor_builder.append('|')
-                expr.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires)
+                expr.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling)
             tensor_builder.append(']')
             return
 
         def tensor_updater(expr):
-            return lambda t: expr.extend_tensor(t, steps_range, total_steps, context, is_hires)
+            return lambda t: expr.extend_tensor(t, steps_range, total_steps, context, is_hires, use_old_scheduling)
 
         exprs = self.__expressions + [self.__expressions[0]]
 
@@ -132,25 +134,29 @@ class EditingExpression:
         self.__expressions = expressions
         self.__step = step
 
-    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires):
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling):
         if self.__step is None:
             tensor_builder.append('[')
             for expr_i, expr in enumerate(self.__expressions):
-                expr.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires)
+                expr.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling)
                 tensor_builder.append(':')
             tensor_builder.append(']')
             return
 
-        step = _eval_int_or_float(self.__step, steps_range, total_steps, context, is_hires)
-        if isinstance(step, float):
-            step = int((step - int(is_hires)) * total_steps)
+        step = _eval_int_or_float(self.__step, steps_range, total_steps, context, is_hires, use_old_scheduling)
+        if use_old_scheduling and 0 < step < 1:
+            step *= total_steps
+        elif not use_old_scheduling and isinstance(step, float):
+            step = (step - int(is_hires)) * total_steps
         else:
             step += 1
+
+        step = int(step)
 
         tensor_builder.append('[')
         for expr_i, expr in enumerate(self.__expressions):
             expr_steps_range = (steps_range[0], step) if expr_i == 0 and len(self.__expressions) >= 2 else (step, steps_range[1])
-            expr.extend_tensor(tensor_builder, expr_steps_range, total_steps, context, is_hires)
+            expr.extend_tensor(tensor_builder, expr_steps_range, total_steps, context, is_hires, use_old_scheduling)
             tensor_builder.append(':')
 
         tensor_builder.append(f'{step - 1}]')
@@ -165,14 +171,14 @@ class WeightedExpression:
         self.__weight = weight
         self.__positive = positive
 
-    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires):
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling):
         open_bracket, close_bracket = ('(', ')') if self.__positive else ('[', ']')
         tensor_builder.append(open_bracket)
-        self.__nested.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires)
+        self.__nested.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling)
 
         if self.__weight is not None:
             tensor_builder.append(':')
-            self.__weight.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires)
+            self.__weight.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling)
 
         tensor_builder.append(close_bracket)
 
@@ -183,11 +189,11 @@ class WeightInterpolationExpression:
         self.__weight_begin = weight_begin if weight_begin is not None else LiftExpression(str(1.))
         self.__weight_end = weight_end if weight_end is not None else LiftExpression(str(1.))
 
-    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires):
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling):
         steps_range_size = steps_range[1] - steps_range[0]
 
-        weight_begin = _eval_int_or_float(self.__weight_begin, steps_range, total_steps, context, is_hires)
-        weight_end = _eval_int_or_float(self.__weight_end, steps_range, total_steps, context, is_hires)
+        weight_begin = _eval_int_or_float(self.__weight_begin, steps_range, total_steps, context, is_hires, use_old_scheduling)
+        weight_end = _eval_int_or_float(self.__weight_end, steps_range, total_steps, context, is_hires, use_old_scheduling)
 
         for i in range(steps_range_size):
             step = i + steps_range[0]
@@ -199,7 +205,7 @@ class WeightInterpolationExpression:
             if step + 1 < steps_range[1]:
                 weight_step_expr = EditingExpression([weight_step_expr, ListExpression([])], LiftExpression(str(step)))
 
-            weight_step_expr.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires)
+            weight_step_expr.extend_tensor(tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling)
 
 
 class DeclarationExpression:
@@ -209,10 +215,10 @@ class DeclarationExpression:
         self.__target = target
         self.__parameters = parameters
 
-    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires):
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling):
         updated_context = dict(context)
         updated_context[self.__symbol] = (self.__value, self.__parameters)
-        self.__target.extend_tensor(tensor_builder, steps_range, total_steps, updated_context, is_hires)
+        self.__target.extend_tensor(tensor_builder, steps_range, total_steps, updated_context, is_hires, use_old_scheduling)
 
 
 class SubstitutionExpression:
@@ -220,12 +226,12 @@ class SubstitutionExpression:
         self.__symbol = symbol
         self.__arguments = arguments
 
-    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires):
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling):
         updated_context = dict(context)
         nested, parameters = context[self.__symbol]
         for argument, parameter in zip(self.__arguments, parameters):
             updated_context[parameter] = argument, []
-        nested.extend_tensor(tensor_builder, steps_range, total_steps, updated_context, is_hires)
+        nested.extend_tensor(tensor_builder, steps_range, total_steps, updated_context, is_hires, use_old_scheduling)
 
 
 class LiftExpression:
@@ -236,9 +242,9 @@ class LiftExpression:
         tensor_builder.append(self.__value)
 
 
-def _eval_int_or_float(expression, steps_range, total_steps, context, is_hires):
+def _eval_int_or_float(expression, steps_range, total_steps, context, is_hires, use_old_scheduling):
     mock_database = ['']
-    expression.extend_tensor(interpolation_tensor.InterpolationTensorBuilder(prompt_database=mock_database), steps_range, total_steps, context, is_hires)
+    expression.extend_tensor(interpolation_tensor.InterpolationTensorBuilder(prompt_database=mock_database), steps_range, total_steps, context, is_hires, use_old_scheduling)
     try:
         return int(mock_database[0])
     except ValueError:
