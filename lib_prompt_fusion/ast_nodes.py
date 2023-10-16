@@ -144,22 +144,23 @@ class EditingExpression:
             return
 
         step = _eval_int_or_float(self.__step, steps_range, total_steps, context, is_hires, use_old_scheduling)
+        step_int = step
         if use_old_scheduling and 0 < step < 1:
-            step *= total_steps
+            step_int *= total_steps
         elif not use_old_scheduling and isinstance(step, float):
-            step = (step - int(is_hires)) * total_steps
+            step_int = (step_int - int(is_hires)) * total_steps
         else:
-            step += 1
+            step_int += 1
 
-        step = int(step)
+        step_int = int(step_int)
 
         tensor_builder.append('[')
         for expr_i, expr in enumerate(self.__expressions):
-            expr_steps_range = (steps_range[0], step) if expr_i == 0 and len(self.__expressions) >= 2 else (step, steps_range[1])
+            expr_steps_range = (steps_range[0], step_int) if expr_i == 0 and len(self.__expressions) >= 2 else (step_int, steps_range[1])
             expr.extend_tensor(tensor_builder, expr_steps_range, total_steps, context, is_hires, use_old_scheduling)
             tensor_builder.append(':')
 
-        tensor_builder.append(f'{step - 1}]')
+        tensor_builder.append(f'{step}]')
 
 
 class WeightedExpression:
