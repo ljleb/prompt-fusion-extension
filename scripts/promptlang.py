@@ -60,4 +60,4 @@ def _sample_schedules(cond_tensor: interpolation_tensor.InterpolationTensor, ste
         else:
             schedules.append(cond)
 
-    return torch.stack(schedules)
+    return torch.stack(schedules, dim=-5)

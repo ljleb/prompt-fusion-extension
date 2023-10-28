@@ -29,11 +29,10 @@ class InterpolationTensor:
             for sub_tensor in self.__sub_tensors
         ]
 
-        CondWrapper, control_points_values = conds_to_cp_values(control_points)
-        return TensorCondWrapper.from_cp_values(self.__interpolation_function(control_points, params) for control_points in control_points_values).original_cond
+        return self.__interpolation_function(control_points, params)
 
     def to_cond_delta(self, step, origin_cond, empty_cond):
-        schedule = self.__sub_tensors[step]
+        schedule = self.__sub_tensors.select(dim=-5, index=step)
         return (TensorCondWrapper(schedule.to(torch.float64)).extend_like(origin_cond, empty_cond) - TensorCondWrapper(origin_cond).extend_like(schedule, empty_cond)).original_cond
 
 
