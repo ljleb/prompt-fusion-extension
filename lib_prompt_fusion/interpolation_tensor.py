@@ -1,6 +1,5 @@
 import dataclasses
 import torch
-from modules import prompt_parser
 from typing import NamedTuple
 
 
@@ -19,7 +18,7 @@ class InterpolationTensor:
 
     def interpolate(self, params: InterpolationParams, origin_cond, empty_cond):
         cond_delta = self.interpolate_cond_delta_rec(params, origin_cond, empty_cond)
-        return cond_delta + origin_cond.extend_like(cond_delta, empty_cond)
+        return (cond_delta + TensorCondWrapper(origin_cond).extend_like(cond_delta, empty_cond).original_cond).to(origin_cond.dtype)
 
     def interpolate_cond_delta_rec(self, params: InterpolationParams, origin_cond, empty_cond):
         if self.__interpolation_function is None:
@@ -31,15 +30,11 @@ class InterpolationTensor:
         ]
 
         CondWrapper, control_points_values = conds_to_cp_values(control_points)
-        return CondWrapper.from_cp_values(self.__interpolation_function(control_points, params) for control_points in control_points_values)
+        return TensorCondWrapper.from_cp_values(self.__interpolation_function(control_points, params) for control_points in control_points_values).original_cond
 
     def to_cond_delta(self, step, origin_cond, empty_cond):
-        schedule = None
-        for schedule in self.__sub_tensors:
-            if schedule.end_at_step >= step:
-                break
-
-        return schedule.cond.extend_like(origin_cond, empty_cond) - origin_cond.extend_like(schedule.cond, empty_cond)
+        schedule = self.__sub_tensors[step]
+        return (TensorCondWrapper(schedule.to(torch.float64)).extend_like(origin_cond, empty_cond) - TensorCondWrapper(origin_cond).extend_like(schedule, empty_cond)).original_cond
 
 
 def conds_to_cp_values(conds):
@@ -119,19 +114,16 @@ class InterpolationTensorBuilder:
 
     def __resize_uniformly(self, conds, max_cond_size: int, empty_cond):
         return [
-            [
-                prompt_parser.ScheduledPromptConditioning(
-                    cond=schedule.cond.resize_schedule(max_cond_size, empty_cond),
-                    end_at_step=schedule.end_at_step
-                )
+            torch.stack([
+                TensorCondWrapper(schedule).resize_schedule(max_cond_size, empty_cond).original_cond
                 for schedule in schedules
-            ]
+            ])
             for schedules in conds
         ]
 
     @staticmethod
     def __max_cond_size(conds):
-        return max(schedule.cond.size(0)
+        return max(schedule.size(0)
                    for schedules in conds
                    for schedule in schedules)
 
@@ -197,7 +189,7 @@ class TensorCondWrapper:
 
     def extend_like(self, that, empty):
         missing_size = max(0, that.size(0) - self.original_cond.size(0)) // 77
-        return TensorCondWrapper(torch.concatenate([self.original_cond] + [empty.original_cond] * missing_size))
+        return TensorCondWrapper(torch.concatenate([self.original_cond] + [empty] * missing_size))
 
     def resize_schedule(self, target_size, empty_cond):
         cond_missing_size = (target_size - self.original_cond.size(0)) // 77

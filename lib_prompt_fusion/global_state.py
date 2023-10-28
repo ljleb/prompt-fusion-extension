@@ -1,23 +1,17 @@
-from typing import List, Optional
-from modules import shared, prompt_parser
-from lib_prompt_fusion import empty_cond
+from typing import Sequence, Optional
+from modules import shared
+from torch import Tensor
 
 
 old_webui_is_negative: bool = False
-negative_schedules: Optional[List[prompt_parser.ScheduledPromptConditioning]] = None
-negative_schedules_hires: Optional[List[prompt_parser.ScheduledPromptConditioning]] = None
+negative_schedules: Optional[Sequence[Sequence[Tensor]]] = None
 
 
-def get_origin_cond_at(step: int, is_hires: bool = False):
-    fallback_schedules = negative_schedules_hires if is_hires else negative_schedules
-    if not fallback_schedules or not shared.opts.data.get('prompt_fusion_slerp_negative_origin', False):
-        return empty_cond.get()
+def get_origin_cond_at(step: int, pass_index: int, empty_cond: Tensor):
+    if negative_schedules is None or pass_index >= len(negative_schedules) or not shared.opts.data.get('prompt_fusion_slerp_negative_origin', False):
+        return empty_cond
 
-    for schedule in fallback_schedules:
-        if schedule.end_at_step >= step:
-            return schedule.cond
-
-    return empty_cond.get()
+    return negative_schedules[pass_index][step]
 
 
 def get_slerp_scale():
