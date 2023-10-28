@@ -22,7 +22,7 @@ script_callbacks.on_ui_settings(on_ui_settings)
 
 # TODO - verify function signature in wrapper()
 @plugin.wrapper
-def encode_prompt_schedule(params: sdlib.EncodePromptScheduleParams):
+def encode_prompt(params: sdlib.EncodePromptScheduleParams):
     tensor_builder = _parse_tensor_builder(params.prompt, params.steps, params.pass_index)
     flattened_conds = yield from _encode_all_prompts(params, tensor_builder.get_prompt_database())
     cond_tensor = tensor_builder.build(flattened_conds, params.empty_cond)
