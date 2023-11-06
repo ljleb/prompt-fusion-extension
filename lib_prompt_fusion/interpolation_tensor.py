@@ -32,7 +32,7 @@ class InterpolationTensor:
         return self.__interpolation_function(control_points, params)
 
     def to_cond_delta(self, step, origin_cond, empty_cond):
-        schedule = self.__sub_tensors.select(dim=-5, index=step)
+        schedule = self.__sub_tensors[step]
         return (TensorCondWrapper(schedule.to(torch.float64)).extend_like(origin_cond, empty_cond) - TensorCondWrapper(origin_cond).extend_like(schedule, empty_cond)).original_cond
 
 

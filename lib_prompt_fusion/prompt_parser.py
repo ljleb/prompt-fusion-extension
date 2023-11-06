@@ -1,13 +1,17 @@
 import lib_prompt_fusion.ast_nodes as ast
 from collections import namedtuple
+import numpy as np
 import re
 
 
 ParseResult = namedtuple('ParseResult', ['prompt', 'expr'])
 
 
+vectorized_lstrip = np.vectorize(str.lstrip, otypes=[object])
+
+
 def parse_prompt(prompt):
-    prompt = prompt.lstrip()
+    prompt = vectorized_lstrip(prompt)
     prompt, list_expr = parse_list_expression(prompt, set())
     return list_expr
 
@@ -368,6 +372,9 @@ def parse_token(prompt, regex):
         raise ValueError
 
     return ParseResult(prompt=prompt[len(match.group()):], expr=match.groups()[-1])
+
+
+parse_token = np.vectorize(parse_token, excluded=["regex"], otypes=[object])
 
 
 def whitespace_tail_regex(regex, stoppers):

@@ -23,6 +23,10 @@ script_callbacks.on_ui_settings(on_ui_settings)
 # TODO - verify function signature in wrapper()
 @plugin.wrapper
 def encode_prompt(params: sdlib.EncodePromptScheduleParams):
+    if not shared.opts.data.get("prompt_fusion_enabled", False):
+        schedule = yield params
+        return schedule
+
     tensor_builder = _parse_tensor_builder(params.prompt, params.steps, params.pass_index)
     flattened_conds = yield from _encode_all_prompts(params, tensor_builder.get_prompt_database())
     cond_tensor = tensor_builder.build(flattened_conds, params.empty_cond)
@@ -43,7 +47,6 @@ def _encode_all_prompts(params: sdlib.EncodePromptScheduleParams, prompts):
         # TODO - memoize original function. clear cache when returning from the last wrapper
         cond = yield dataclasses.replace(params, prompt=prompt)
         conds.append(cond)
-
     return conds
 
 
@@ -55,9 +58,5 @@ def _sample_schedules(cond_tensor: interpolation_tensor.InterpolationTensor, ste
         origin_cond = global_state.get_origin_cond_at(step, pass_index, empty_cond)
         params = interpolation_tensor.InterpolationParams(step / steps, step, steps, global_state.get_slerp_scale(), global_state.get_slerp_epsilon())
         cond = cond_tensor.interpolate(params, origin_cond, empty_cond)
-        if schedules and (schedules[-1] == cond).all():
-            schedules.append(schedules[-1])
-        else:
-            schedules.append(cond)
-
-    return torch.stack(schedules, dim=-5)
+        schedules.append(cond)
+    return torch.stack(schedules)
