@@ -53,8 +53,6 @@ def _encode_all_prompts(params: sdlib.EncodePromptScheduleParams, prompts):
 def _sample_schedules(cond_tensor: interpolation_tensor.InterpolationTensor, params: sdlib.EncodePromptScheduleParams):
     schedules = []
     for step in range(params.steps):
-        # TODO - origin cond does not work fully anymore because negative prompts are not guaranteed to be processed first
-        #          -> either this plugin should be able to influence the control flow, or negative prompts are guaranteed to be processed first
         origin_cond = global_state.get_origin_cond_at(step, params.empty_cond, params.negative_schedule)
         interpolation_params = interpolation_tensor.InterpolationParams(
             t=step/params.steps,
