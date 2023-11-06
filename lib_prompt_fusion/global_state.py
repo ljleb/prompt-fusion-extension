@@ -1,12 +1,9 @@
-from typing import Optional
 from modules import shared
 from torch import Tensor
+from typing import Optional
 
 
-negative_schedule: Optional[Tensor] = None
-
-
-def get_origin_cond_at(step: int, empty_cond: Tensor):
+def get_origin_cond_at(step: int, empty_cond: Tensor, negative_schedule: Optional[Tensor]):
     if negative_schedule is None or not shared.opts.data.get('prompt_fusion_slerp_negative_origin', False):
         return empty_cond
 

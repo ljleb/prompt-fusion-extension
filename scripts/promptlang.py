@@ -27,17 +27,17 @@ def encode_prompt(params: sdlib.EncodePromptScheduleParams):
         schedule = yield params
         return schedule
 
-    tensor_builder = _parse_tensor_builder(params.prompt, params.steps, params.pass_index)
+    tensor_builder = _parse_tensor_builder(params)
     flattened_conds = yield from _encode_all_prompts(params, tensor_builder.get_prompt_database())
     cond_tensor = tensor_builder.build(flattened_conds, params.empty_cond)
-    schedule = _sample_schedules(cond_tensor, params.steps, params.pass_index, params.empty_cond)
+    schedule = _sample_schedules(cond_tensor, params)
     return schedule
 
 
-def _parse_tensor_builder(prompt: str, steps: int, pass_index: int):
-    expr = prompt_fusion_parser.parse_prompt(prompt)
+def _parse_tensor_builder(params: sdlib.EncodePromptScheduleParams):
+    expr = prompt_fusion_parser.parse_prompt(params.prompt)
     tensor_builder = interpolation_tensor.InterpolationTensorBuilder()
-    expr.extend_tensor(tensor_builder, (0, steps), steps, dict(), pass_index, use_old_scheduling=False)
+    expr.extend_tensor(tensor_builder, (0, params.steps), params.steps, dict(), params.pass_index, use_old_scheduling=False)
     return tensor_builder
 
 
@@ -50,13 +50,19 @@ def _encode_all_prompts(params: sdlib.EncodePromptScheduleParams, prompts):
     return conds
 
 
-def _sample_schedules(cond_tensor: interpolation_tensor.InterpolationTensor, steps: int, pass_index: int, empty_cond: torch.Tensor):
+def _sample_schedules(cond_tensor: interpolation_tensor.InterpolationTensor, params: sdlib.EncodePromptScheduleParams):
     schedules = []
-    for step in range(steps):
+    for step in range(params.steps):
         # TODO - origin cond does not work fully anymore because negative prompts are not guaranteed to be processed first
         #          -> either this plugin should be able to influence the control flow, or negative prompts are guaranteed to be processed first
-        origin_cond = global_state.get_origin_cond_at(step, pass_index, empty_cond)
-        params = interpolation_tensor.InterpolationParams(step / steps, step, steps, global_state.get_slerp_scale(), global_state.get_slerp_epsilon())
-        cond = cond_tensor.interpolate(params, origin_cond, empty_cond)
+        origin_cond = global_state.get_origin_cond_at(step, params.empty_cond, params.negative_schedule)
+        interpolation_params = interpolation_tensor.InterpolationParams(
+            t=step/params.steps,
+            step=step,
+            total_steps=params.steps,
+            slerp_scale=global_state.get_slerp_scale(),
+            slerp_epsilon=global_state.get_slerp_epsilon(),
+        )
+        cond = cond_tensor.interpolate(interpolation_params, origin_cond, params.empty_cond)
         schedules.append(cond)
     return torch.stack(schedules)
