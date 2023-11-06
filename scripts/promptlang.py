@@ -44,7 +44,6 @@ def _parse_tensor_builder(params: sdlib.EncodePromptScheduleParams):
 def _encode_all_prompts(params: sdlib.EncodePromptScheduleParams, prompts):
     conds = []
     for prompt in prompts:
-        # TODO - memoize original function. clear cache when returning from the last wrapper
         cond = yield dataclasses.replace(params, prompt=prompt)
         conds.append(cond)
     return conds
