@@ -22,6 +22,17 @@ class ListExpression:
 
 
 class InterpolationExpression:
+    @staticmethod
+    def create(exprs, steps, function_name):
+        if function_name == "mean":
+            return AverageExpression(exprs, steps)
+
+        max_len = min(len(exprs), len(steps))
+        exprs = exprs[:max_len]
+        steps = steps[:max_len]
+
+        return InterpolationExpression(exprs, steps, function_name)
+
     def __init__(self, expressions, steps, function_name=None):
         assert len(expressions) >= 2
         assert len(steps) == len(expressions), 'the number of steps must be the same as the number of expressions'
@@ -86,6 +97,50 @@ class InterpolationExpression:
             return interpolation_function(conds, new_params)
 
         return steps_scale_t
+
+
+class AverageExpression:
+    def __init__(self, expressions, weights):
+        if len(expressions) < len(weights):
+            raise ValueError
+
+        self.__expressions = expressions
+        self.__weights = weights
+
+    def extend_tensor(self, tensor_builder, steps_range, total_steps, context, is_hires, use_old_scheduling):
+        def tensor_updater(expr):
+            return lambda t: expr.extend_tensor(t, steps_range, total_steps, context, is_hires, use_old_scheduling)
+
+        tensor_builder.extrude(
+            [tensor_updater(expr) for expr in self.__expressions],
+            self.get_interpolation_function(steps_range, total_steps, context, is_hires, use_old_scheduling))
+
+    def get_interpolation_function(self, steps_range, total_steps, context, is_hires, use_old_scheduling):
+        weights = [
+            _eval_int_or_float(weight, steps_range, total_steps, context, is_hires, use_old_scheduling) if weight is not None else None
+            for weight in self.__weights
+        ]
+        explicit_weights = [weight for weight in weights if weight is not None]
+        weights = [
+            weight / sum(explicit_weights) * len(explicit_weights) / len(self.__expressions)
+            if weight is not None
+            else 1 / len(self.__expressions)
+            for weight in weights
+        ]
+        weights.extend(1 / len(self.__expressions) for _ in range(len(self.__expressions) - len(weights)))
+
+        def interpolation_function(conds, _params):
+            total = None
+            for cond, weight in zip(conds, weights):
+                cond *= weight
+                if total is None:
+                    total = cond
+                else:
+                    total += cond
+
+            return total
+
+        return interpolation_function
 
 
 class AlternationExpression:
