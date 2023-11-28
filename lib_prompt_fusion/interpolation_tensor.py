@@ -1,7 +1,7 @@
 import dataclasses
 import torch
 from modules import prompt_parser
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 
 class InterpolationParams(NamedTuple):
@@ -19,7 +19,7 @@ class InterpolationTensor:
 
     def interpolate(self, params: InterpolationParams, origin_cond, empty_cond):
         cond_delta = self.interpolate_cond_delta_rec(params, origin_cond, empty_cond)
-        return cond_delta + origin_cond.extend_like(cond_delta, empty_cond)
+        return (cond_delta + origin_cond.extend_like(cond_delta, empty_cond)).to(dtype=origin_cond.dtype)
 
     def interpolate_cond_delta_rec(self, params: InterpolationParams, origin_cond, empty_cond):
         if self.__interpolation_function is None:
@@ -39,7 +39,7 @@ class InterpolationTensor:
             if schedule.end_at_step >= step:
                 break
 
-        return schedule.cond.extend_like(origin_cond, empty_cond) - origin_cond.extend_like(schedule.cond, empty_cond)
+        return schedule.cond.extend_like(origin_cond, empty_cond).to(dtype=torch.double) - origin_cond.extend_like(schedule.cond, empty_cond).to(dtype=torch.double)
 
 
 def conds_to_cp_values(conds):
@@ -168,6 +168,24 @@ class DictCondWrapper:
     def to_cp_values(self):
         return list(self.original_cond.values())
 
+    def to(self, dtype: Union[dict, torch.dtype]):
+        if not isinstance(dtype, dict):
+            dtype = {
+                k: dtype
+                for k in self.original_cond.items()
+            }
+        return DictCondWrapper({
+            k: v.to(dtype=dtype[k])
+            for k, v in self.original_cond.items()
+        })
+
+    @property
+    def dtype(self):
+        return {
+            k: v.dtype
+            for k, v in self.original_cond.items()
+        }
+
     def __sub__(self, that):
         return DictCondWrapper({
             k: v - that.original_cond[k]
@@ -208,6 +226,13 @@ class TensorCondWrapper:
 
     def to_cp_values(self):
         return [self.original_cond]
+
+    def to(self, dtype: torch.dtype):
+        return TensorCondWrapper(self.original_cond.to(dtype=dtype))
+
+    @property
+    def dtype(self):
+        return self.original_cond.dtype
 
     def __sub__(self, that):
         return TensorCondWrapper(self.original_cond - that.original_cond)

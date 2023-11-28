@@ -6,7 +6,7 @@ def run_functional_tests(total_steps=100):
     for i, (given, expected) in enumerate(functional_parse_test_cases):
         expr = parse_prompt(given)
         tensor_builder = InterpolationTensorBuilder()
-        expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, dict())
+        expr.extend_tensor(tensor_builder, (0, total_steps), total_steps, dict(), is_hires=False, use_old_scheduling=False)
 
         actual = tensor_builder.get_prompt_database()
 
@@ -94,6 +94,9 @@ functional_parse_test_cases = [
     ('[a|b|c:0.5]', {'a', 'b', 'c'}),
     ('[a|b|c:1.1]', {'a', 'b', 'c'}),
     ('[[[Imperial Yellow|Amber]:[Ruby|Plum|Bronze]:9]::39]',)*2,
+    ('[a:b:c::mean]', {'a', 'b', 'c'}),
+    ('[a:b:c:,,:mean]', {'a', 'b', 'c'}),
+    ('[a:b:c: 1, 2, 3:mean]', {'a', 'b', 'c'}),
 ]
 
 
