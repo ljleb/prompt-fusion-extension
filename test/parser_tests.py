@@ -97,7 +97,6 @@ functional_parse_test_cases = [
     ('[a:b:c::mean]', {'a', 'b', 'c'}),
     ('[a:b:c:,,:mean]', {'a', 'b', 'c'}),
     ('[a:b:c: 1, 2, 3:mean]', {'a', 'b', 'c'}),
-    ('[a:b:c: 1, 2, 3:mean]', {'a', 'b', 'c'}),
 ]
 
 
