@@ -18,6 +18,9 @@ Prompt Fusion is an [auto1111 webui extension](https://github.com/AUTOMATIC1111/
 # prompt-editing-aware attention interpolation
 [(fire extinguisher: 1.0, 2.0)::5]
 
+# weighted sum of conditions
+[space station : kitchen mixer :: mean]
+
 # define functions and variables to simplify repeating patterns and use a consistent structure
 $prompt($style, $quality, $character, $background) = (
     A detailed picture in the style of $style,
