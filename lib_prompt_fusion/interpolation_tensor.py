@@ -172,7 +172,7 @@ class DictCondWrapper:
         if not isinstance(dtype, dict):
             dtype = {
                 k: dtype
-                for k in self.original_cond.items()
+                for k in self.original_cond.keys()
             }
         return DictCondWrapper({
             k: v.to(dtype=dtype[k])
