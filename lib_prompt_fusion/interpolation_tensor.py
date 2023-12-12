@@ -20,8 +20,8 @@ class InterpolationTensor:
     def interpolate(self, params: InterpolationParams, origin_cond, empty_cond):
         cond = self.interpolate_cond_rec(params, origin_cond, empty_cond)
         if params.slerp_scale != 0:
-            cond += origin_cond.extend_like(cond, empty_cond)
-        return cond.to(dtype=origin_cond.dtype)
+            cond = (cond + origin_cond.extend_like(cond, empty_cond)).to(dtype=origin_cond.dtype)
+        return cond
 
     def interpolate_cond_rec(self, params: InterpolationParams, origin_cond, empty_cond):
         if self.__interpolation_function is None:
