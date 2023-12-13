@@ -21,7 +21,7 @@ def get_origin_cond_at(step: int, is_hires: bool = False):
 
 
 def get_slerp_scale():
-    return shared.opts.data.get('prompt_fusion_slerp_scale', 1)
+    return shared.opts.data.get('prompt_fusion_slerp_scale', 0.0)
 
 
 def get_slerp_epsilon():
